@@ -68,7 +68,7 @@ export function CourseDetailPage() {
         const lesson = unit.lessons[lessonIdx];
         // Check if this lesson is completed (would need progress data per lesson)
         // For now, use overall progress to estimate
-        const estimatedCompleted = progress
+        const estimatedCompleted = progress && progress.total_lessons > 0
           ? Math.floor((progress.completed_lessons / progress.total_lessons) * course.units.reduce((sum, u) => sum + u.lessons.length, 0))
           : 0;
         const currentLessonIndex = course.units.slice(0, unitIdx).reduce((sum, u) => sum + u.lessons.length, 0) + lessonIdx;
