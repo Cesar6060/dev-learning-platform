@@ -493,6 +493,240 @@ def dashboard_stats(request):
         })
 
 
+@api_view(['GET'])
+@perm_classes([IsAuthenticated])
+def enhanced_dashboard(request):
+    """
+    Get enhanced dashboard data for the current user.
+    Returns different data for instructors vs students.
+
+    For Students:
+    - continue_learning: most recently accessed course with current lesson info
+    - upcoming_deadlines: next 3 assignments/quizzes due
+    - course_progress_overview: progress bars for each enrolled course
+
+    For Instructors:
+    - recent_submissions: last 5 submissions needing review
+    - course_progress_overview: summary of each course taught
+    """
+    from assignments.models import Assignment, Submission
+    from quizzes.models import Quiz, QuizAttempt
+
+    user = request.user
+    now = timezone.now()
+
+    if user.is_instructor:
+        # Instructor Dashboard
+
+        # Get courses taught by this instructor
+        instructor_courses = Course.objects.filter(instructor=user)
+
+        # Recent submissions needing review (submitted but not graded)
+        recent_submissions = Submission.objects.filter(
+            assignment__unit__course__in=instructor_courses,
+            status='submitted'
+        ).select_related(
+            'student', 'assignment', 'assignment__unit__course'
+        ).order_by('-submitted_at')[:5]
+
+        recent_submissions_data = []
+        for sub in recent_submissions:
+            recent_submissions_data.append({
+                'id': sub.id,
+                'student_name': sub.student.get_full_name() or sub.student.email,
+                'student_email': sub.student.email,
+                'assignment_title': sub.assignment.title,
+                'course_code': sub.assignment.unit.course.code,
+                'course_title': sub.assignment.unit.course.title,
+                'submitted_at': sub.submitted_at.isoformat() if sub.submitted_at else None,
+                'is_late': sub.is_late,
+            })
+
+        # Course progress overview for instructor's courses
+        course_progress = []
+        for course in instructor_courses:
+            total_students = Enrollment.objects.filter(
+                course=course, is_active=True
+            ).count()
+
+            # Count submissions pending grading
+            pending_count = Submission.objects.filter(
+                assignment__unit__course=course,
+                status='submitted'
+            ).count()
+
+            course_progress.append({
+                'course_code': course.code,
+                'course_title': course.title,
+                'student_count': total_students,
+                'pending_submissions': pending_count,
+            })
+
+        return Response({
+            'recent_submissions': recent_submissions_data,
+            'course_progress_overview': course_progress,
+            'is_instructor': True,
+        })
+
+    else:
+        # Student Dashboard
+
+        # Get actively enrolled courses
+        enrollments = Enrollment.objects.filter(
+            user=user, is_active=True
+        ).select_related('course').order_by('-last_activity_at')
+
+        # Continue Learning: most recently accessed course
+        continue_learning = None
+        if enrollments.exists():
+            most_recent_enrollment = enrollments.first()
+            course = most_recent_enrollment.course
+
+            # Find current lesson (first incomplete or last completed)
+            completed_lessons = LessonProgress.objects.filter(
+                user=user,
+                lesson__unit__course=course,
+                completed=True
+            ).values_list('lesson_id', flat=True)
+
+            # Get all lessons in course order
+            all_lessons = Lesson.objects.filter(
+                unit__course=course
+            ).select_related('unit').order_by('unit__order', 'order')
+
+            current_lesson = None
+            for lesson in all_lessons:
+                if lesson.id not in completed_lessons:
+                    current_lesson = lesson
+                    break
+
+            # If all lessons completed, show the last one
+            if not current_lesson and all_lessons.exists():
+                current_lesson = all_lessons.last()
+
+            # Calculate progress
+            total_lessons = all_lessons.count()
+            completed_count = len(completed_lessons)
+            progress_percentage = round((completed_count / total_lessons) * 100, 1) if total_lessons > 0 else 0
+
+            continue_learning = {
+                'course_code': course.code,
+                'course_title': course.title,
+                'current_lesson': {
+                    'id': current_lesson.id,
+                    'title': current_lesson.title,
+                    'unit_title': current_lesson.unit.title,
+                } if current_lesson else None,
+                'progress_percentage': progress_percentage,
+                'completed_lessons': completed_count,
+                'total_lessons': total_lessons,
+                'last_activity_at': most_recent_enrollment.last_activity_at.isoformat() if most_recent_enrollment.last_activity_at else None,
+            }
+
+        # Upcoming deadlines: next 3 assignments/quizzes due
+        enrolled_course_ids = enrollments.values_list('course_id', flat=True)
+
+        # Get assignments with due dates in the future
+        upcoming_assignments = Assignment.objects.filter(
+            unit__course_id__in=enrolled_course_ids,
+            due_date__gte=now
+        ).exclude(
+            # Exclude assignments already submitted
+            submissions__student=user,
+            submissions__status__in=['submitted', 'graded']
+        ).select_related('unit__course').order_by('due_date')[:3]
+
+        upcoming_deadlines = []
+        for assignment in upcoming_assignments:
+            # Check if student has a draft submission
+            has_draft = Submission.objects.filter(
+                assignment=assignment,
+                student=user,
+                status='draft'
+            ).exists()
+
+            upcoming_deadlines.append({
+                'id': assignment.id,
+                'type': 'assignment',
+                'title': assignment.title,
+                'course_code': assignment.unit.course.code,
+                'course_title': assignment.unit.course.title,
+                'due_date': assignment.due_date.isoformat(),
+                'max_points': assignment.max_points,
+                'has_draft': has_draft,
+            })
+
+        # Course progress overview
+        course_progress = []
+        for enrollment in enrollments:
+            course = enrollment.course
+
+            # Calculate lesson progress
+            total_lessons = Lesson.objects.filter(unit__course=course).count()
+            completed_lessons = LessonProgress.objects.filter(
+                user=user,
+                lesson__unit__course=course,
+                completed=True
+            ).count()
+
+            # Calculate assignment progress
+            total_assignments = Assignment.objects.filter(unit__course=course).count()
+            completed_assignments = Submission.objects.filter(
+                assignment__unit__course=course,
+                student=user,
+                status__in=['submitted', 'graded']
+            ).count()
+
+            # Calculate quiz progress
+            total_quizzes = Quiz.objects.filter(unit__course=course).count()
+            passed_quizzes = QuizAttempt.objects.filter(
+                quiz__unit__course=course,
+                student=user,
+                passed=True
+            ).values('quiz').distinct().count()
+
+            lesson_percentage = round((completed_lessons / total_lessons) * 100, 1) if total_lessons > 0 else 0
+            assignment_percentage = round((completed_assignments / total_assignments) * 100, 1) if total_assignments > 0 else 0
+            quiz_percentage = round((passed_quizzes / total_quizzes) * 100, 1) if total_quizzes > 0 else 0
+
+            # Overall progress (weighted average)
+            total_items = total_lessons + total_assignments + total_quizzes
+            if total_items > 0:
+                overall_percentage = round(
+                    ((completed_lessons + completed_assignments + passed_quizzes) / total_items) * 100, 1
+                )
+            else:
+                overall_percentage = 0
+
+            course_progress.append({
+                'course_code': course.code,
+                'course_title': course.title,
+                'overall_percentage': overall_percentage,
+                'lessons': {
+                    'completed': completed_lessons,
+                    'total': total_lessons,
+                    'percentage': lesson_percentage,
+                },
+                'assignments': {
+                    'completed': completed_assignments,
+                    'total': total_assignments,
+                    'percentage': assignment_percentage,
+                },
+                'quizzes': {
+                    'passed': passed_quizzes,
+                    'total': total_quizzes,
+                    'percentage': quiz_percentage,
+                },
+            })
+
+        return Response({
+            'continue_learning': continue_learning,
+            'upcoming_deadlines': upcoming_deadlines,
+            'course_progress_overview': course_progress,
+            'is_instructor': False,
+        })
+
+
 class AnnouncementViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Announcement CRUD operations.
