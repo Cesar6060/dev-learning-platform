@@ -19,6 +19,8 @@ export function Header() {
   useEffect(() => {
     if (isAuthenticated && user && !user.is_instructor) {
       courseService.getMyEnrollments().then(setEnrolledCourses).catch(console.error);
+    } else {
+      setEnrolledCourses([]);
     }
   }, [isAuthenticated, user]);
 
@@ -49,7 +51,7 @@ export function Header() {
       const courseCode = courseMatch[1];
       breadcrumbs.push({ label: 'Dashboard', href: '/dashboard' });
       breadcrumbs.push({ label: 'Courses', href: '/courses' });
-      breadcrumbs.push({ label: courseCode.toUpperCase() });
+      breadcrumbs.push({ label: courseCode.toUpperCase(), href: `/courses/${courseCode}` });
 
       // Add sub-page context
       if (path.includes('/grades')) {
