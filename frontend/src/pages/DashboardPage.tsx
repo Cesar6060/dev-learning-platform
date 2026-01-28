@@ -42,9 +42,12 @@ export function DashboardPage() {
   const courses = isInstructor ? instructorCourses : enrolledCourses;
   const hasCourses = courses.length > 0;
 
-  // Calculate stats for students
-  const totalLessons = enrolledCourses.reduce((sum) => sum + 10, 0); // Placeholder
-  const completedLessons = Math.floor(totalLessons * 0.6); // Placeholder
+  // Calculate stats for students from enhanced data
+  const courseProgress = enhancedData && !enhancedData.is_instructor
+    ? enhancedData.course_progress_overview
+    : [];
+  const totalLessons = courseProgress.reduce((sum, course) => sum + course.lessons.total, 0);
+  const completedLessons = courseProgress.reduce((sum, course) => sum + course.lessons.completed, 0);
 
   // Get continue learning data from enhanced dashboard
   const continueLearning = enhancedData && !enhancedData.is_instructor ? enhancedData.continue_learning : null;

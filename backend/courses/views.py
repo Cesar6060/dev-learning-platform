@@ -595,8 +595,9 @@ def enhanced_dashboard(request):
             ).select_related('unit').order_by('unit__order', 'order')
 
             current_lesson = None
+            completed_lessons_set = set(completed_lessons)
             for lesson in all_lessons:
-                if lesson.id not in completed_lessons:
+                if lesson.id not in completed_lessons_set:
                     current_lesson = lesson
                     break
 
@@ -626,14 +627,18 @@ def enhanced_dashboard(request):
         # Upcoming deadlines: next 3 assignments/quizzes due
         enrolled_course_ids = enrollments.values_list('course_id', flat=True)
 
-        # Get assignments with due dates in the future
+        # Get IDs of assignments the user has already submitted/graded
+        submitted_assignment_ids = Submission.objects.filter(
+            student=user,
+            status__in=['submitted', 'graded']
+        ).values_list('assignment_id', flat=True)
+
+        # Get assignments with due dates in the future, excluding already submitted
         upcoming_assignments = Assignment.objects.filter(
             unit__course_id__in=enrolled_course_ids,
             due_date__gte=now
         ).exclude(
-            # Exclude assignments already submitted
-            submissions__student=user,
-            submissions__status__in=['submitted', 'graded']
+            id__in=submitted_assignment_ids
         ).select_related('unit__course').order_by('due_date')[:3]
 
         upcoming_deadlines = []
