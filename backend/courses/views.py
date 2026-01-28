@@ -543,24 +543,31 @@ def enhanced_dashboard(request):
             })
 
         # Course progress overview for instructor's courses
-        course_progress = []
-        for course in instructor_courses:
-            total_students = Enrollment.objects.filter(
-                course=course, is_active=True
-            ).count()
+        # Use annotations to avoid N+1 queries
+        from django.db.models import Count, Q
 
-            # Count submissions pending grading
-            pending_count = Submission.objects.filter(
-                assignment__unit__course=course,
-                status='submitted'
-            ).count()
+        instructor_courses_annotated = Course.objects.filter(
+            instructor=user
+        ).annotate(
+            total_students=Count(
+                'enrollments',
+                filter=Q(enrollments__is_active=True)
+            ),
+            pending_submissions=Count(
+                'units__assignments__submissions',
+                filter=Q(units__assignments__submissions__status='submitted')
+            )
+        )
 
-            course_progress.append({
+        course_progress = [
+            {
                 'course_code': course.code,
                 'course_title': course.title,
-                'student_count': total_students,
-                'pending_submissions': pending_count,
-            })
+                'student_count': course.total_students,
+                'pending_submissions': course.pending_submissions,
+            }
+            for course in instructor_courses_annotated
+        ]
 
         return Response({
             'recent_submissions': recent_submissions_data,
@@ -661,34 +668,68 @@ def enhanced_dashboard(request):
                 'has_draft': has_draft,
             })
 
-        # Course progress overview
+        # Course progress overview - optimized to reduce N+1 queries
+        from django.db.models import Count, Q
+
+        # Get course IDs for bulk queries
+        course_ids = list(enrollments.values_list('course_id', flat=True))
+
+        # Bulk fetch totals per course using annotations
+        course_totals = Course.objects.filter(id__in=course_ids).annotate(
+            total_lessons=Count('units__lessons', distinct=True),
+            total_assignments=Count('units__assignments', distinct=True),
+            total_quizzes=Count('units__quizzes', distinct=True),
+        ).values('id', 'code', 'title', 'total_lessons', 'total_assignments', 'total_quizzes')
+
+        # Build lookup dict
+        totals_by_course = {c['id']: c for c in course_totals}
+
+        # Bulk fetch user's completed lessons per course
+        completed_lessons_by_course = dict(
+            LessonProgress.objects.filter(
+                user=user,
+                lesson__unit__course_id__in=course_ids,
+                completed=True
+            ).values('lesson__unit__course_id').annotate(
+                count=Count('id')
+            ).values_list('lesson__unit__course_id', 'count')
+        )
+
+        # Bulk fetch user's completed assignments per course
+        completed_assignments_by_course = dict(
+            Submission.objects.filter(
+                student=user,
+                assignment__unit__course_id__in=course_ids,
+                status__in=['submitted', 'graded']
+            ).values('assignment__unit__course_id').annotate(
+                count=Count('id')
+            ).values_list('assignment__unit__course_id', 'count')
+        )
+
+        # Bulk fetch user's passed quizzes per course
+        passed_quizzes_by_course = dict(
+            QuizAttempt.objects.filter(
+                student=user,
+                quiz__unit__course_id__in=course_ids,
+                passed=True
+            ).values('quiz__unit__course_id').annotate(
+                count=Count('quiz', distinct=True)
+            ).values_list('quiz__unit__course_id', 'count')
+        )
+
+        # Build course progress from pre-fetched data
         course_progress = []
         for enrollment in enrollments:
-            course = enrollment.course
+            course_id = enrollment.course_id
+            totals = totals_by_course.get(course_id, {})
 
-            # Calculate lesson progress
-            total_lessons = Lesson.objects.filter(unit__course=course).count()
-            completed_lessons = LessonProgress.objects.filter(
-                user=user,
-                lesson__unit__course=course,
-                completed=True
-            ).count()
+            total_lessons = totals.get('total_lessons', 0)
+            total_assignments = totals.get('total_assignments', 0)
+            total_quizzes = totals.get('total_quizzes', 0)
 
-            # Calculate assignment progress
-            total_assignments = Assignment.objects.filter(unit__course=course).count()
-            completed_assignments = Submission.objects.filter(
-                assignment__unit__course=course,
-                student=user,
-                status__in=['submitted', 'graded']
-            ).count()
-
-            # Calculate quiz progress
-            total_quizzes = Quiz.objects.filter(unit__course=course).count()
-            passed_quizzes = QuizAttempt.objects.filter(
-                quiz__unit__course=course,
-                student=user,
-                passed=True
-            ).values('quiz').distinct().count()
+            completed_lessons = completed_lessons_by_course.get(course_id, 0)
+            completed_assignments = completed_assignments_by_course.get(course_id, 0)
+            passed_quizzes = passed_quizzes_by_course.get(course_id, 0)
 
             lesson_percentage = round((completed_lessons / total_lessons) * 100, 1) if total_lessons > 0 else 0
             assignment_percentage = round((completed_assignments / total_assignments) * 100, 1) if total_assignments > 0 else 0
@@ -704,8 +745,8 @@ def enhanced_dashboard(request):
                 overall_percentage = 0
 
             course_progress.append({
-                'course_code': course.code,
-                'course_title': course.title,
+                'course_code': totals.get('code', ''),
+                'course_title': totals.get('title', ''),
                 'overall_percentage': overall_percentage,
                 'lessons': {
                     'completed': completed_lessons,
