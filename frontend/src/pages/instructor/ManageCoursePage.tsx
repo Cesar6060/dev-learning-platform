@@ -6,9 +6,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { courseService, type CourseDetail, type UnitWithLessons, type LessonListItem } from '@/services/courses';
 import { assignmentService } from '@/services/assignments';
-import { quizzesService } from '@/services/quizzes';
 import { LessonQuestionsManager } from '@/components/lesson/LessonQuestionsManager';
-import type { AssignmentListItem, Quiz } from '@/types';
+import type { AssignmentListItem } from '@/types';
 import {
   Loader2, ChevronLeft, Plus, Trash2, Play, FileText,
   Copy, CheckCircle, Settings, BookOpen, ClipboardList, Table, Megaphone, Eye, Users, FileQuestion, HelpCircle
@@ -96,7 +95,6 @@ export function ManageCoursePage() {
   const [selectedUnitId, setSelectedUnitId] = useState<number | null>(null);
   const [lessonLoading, setLessonLoading] = useState(false);
   const [lessonError, setLessonError] = useState('');
-  const [unitQuizzes, setUnitQuizzes] = useState<Quiz[]>([]);
 
   // Assignment state
   const [assignments, setAssignments] = useState<AssignmentListItem[]>([]);
@@ -203,16 +201,6 @@ export function ManageCoursePage() {
   };
 
   // Lesson handlers
-  const loadUnitQuizzes = async (unitId: number) => {
-    try {
-      const quizzes = await quizzesService.getUnitQuizzes(unitId);
-      setUnitQuizzes(quizzes);
-    } catch (err) {
-      console.error('Failed to load unit quizzes:', err);
-      setUnitQuizzes([]);
-    }
-  };
-
   const openAddLessonModal = async (unitId: number) => {
     const unit = course?.units.find(u => u.id === unitId);
     const nextOrder = unit && unit.lessons.length > 0
@@ -230,7 +218,6 @@ export function ManageCoursePage() {
       required_quiz: null,
     });
     setShowLessonModal(true);
-    loadUnitQuizzes(unitId);
   };
 
   const openEditLessonModal = async (lesson: LessonListItem, unitId: number) => {
@@ -247,7 +234,6 @@ export function ManageCoursePage() {
       required_quiz: lesson.required_quiz || null,
     });
     setShowLessonModal(true);
-    loadUnitQuizzes(unitId);
   };
 
   const handleSaveLesson = async (e: FormEvent) => {
@@ -846,35 +832,32 @@ export function ManageCoursePage() {
                 </p>
               </div>
 
-              {/* Required Quiz */}
-              <div className="space-y-2">
-                <label htmlFor="required-quiz" className="text-sm font-medium">
-                  Required Quiz (Optional)
-                </label>
-                <select
-                  id="required-quiz"
-                  value={editingLesson?.required_quiz || ''}
-                  onChange={(e) =>
-                    setEditingLesson(prev =>
-                      prev
-                        ? { ...prev, required_quiz: e.target.value ? Number(e.target.value) : null }
-                        : null
-                    )
-                  }
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <option value="">No quiz required</option>
-                  {unitQuizzes.map((quiz) => (
-                    <option key={quiz.id} value={quiz.id}>
-                      {quiz.title} (Pass: {quiz.passing_score}%)
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground">
-                  Students must pass the selected quiz before they can mark this lesson complete.
-                  {unitQuizzes.length === 0 && ' No quizzes in this unit yet.'}
-                </p>
-              </div>
+              {/* Comprehension Questions */}
+              {editingLesson?.id && (
+                <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium">Comprehension Questions</label>
+                      <p className="text-xs text-muted-foreground">
+                        Add questions students must answer correctly to complete this lesson.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowLessonModal(false);
+                        setSelectedLessonForQuestions({ id: editingLesson.id!, title: editingLesson.title });
+                        setShowQuestionsManager(true);
+                      }}
+                    >
+                      <HelpCircle className="h-4 w-4 mr-2" />
+                      Manage Questions
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button
