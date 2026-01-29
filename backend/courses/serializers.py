@@ -1,18 +1,39 @@
 from rest_framework import serializers
-from .models import Course, Unit, Lesson, Enrollment, LessonProgress, Announcement, CourseGradingConfig
+from .models import (
+    Course, Unit, Lesson, Enrollment, LessonProgress, Announcement, CourseGradingConfig,
+    LessonQuestion, LessonQuestionChoice, LessonQuestionAnswer
+)
 from accounts.serializers import UserSerializer
+
+
+class RequiredQuizSerializer(serializers.Serializer):
+    """Lightweight serializer for required quiz info."""
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+    passing_score = serializers.IntegerField()
 
 
 class LessonSerializer(serializers.ModelSerializer):
     """Serializer for Lesson model."""
+    required_quiz_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
         fields = [
             'id', 'unit', 'title', 'content', 'order',
-            'video_type', 'video_id', 'created_at', 'updated_at'
+            'video_type', 'video_id', 'required_quiz', 'required_quiz_info',
+            'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_required_quiz_info(self, obj):
+        if obj.required_quiz:
+            return {
+                'id': obj.required_quiz.id,
+                'title': obj.required_quiz.title,
+                'passing_score': obj.required_quiz.passing_score,
+            }
+        return None
 
 
 class LessonCreateSerializer(serializers.ModelSerializer):
@@ -20,16 +41,26 @@ class LessonCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lesson
-        fields = ['id', 'title', 'content', 'order', 'video_type', 'video_id']
+        fields = ['id', 'title', 'content', 'order', 'video_type', 'video_id', 'required_quiz']
         read_only_fields = ['id']
 
 
 class LessonListSerializer(serializers.ModelSerializer):
     """Serializer for lesson lists (includes content and video_id for editing)."""
+    required_quiz_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
-        fields = ['id', 'title', 'order', 'video_type', 'video_id', 'content']
+        fields = ['id', 'title', 'order', 'video_type', 'video_id', 'content', 'required_quiz', 'required_quiz_info']
+
+    def get_required_quiz_info(self, obj):
+        if obj.required_quiz:
+            return {
+                'id': obj.required_quiz.id,
+                'title': obj.required_quiz.title,
+                'passing_score': obj.required_quiz.passing_score,
+            }
+        return None
 
 
 class UnitSerializer(serializers.ModelSerializer):
@@ -201,11 +232,66 @@ class EnrollmentCreateSerializer(serializers.Serializer):
 
 class LessonProgressSerializer(serializers.ModelSerializer):
     """Serializer for lesson progress."""
+    required_quiz_passed = serializers.SerializerMethodField()
+    required_quiz_info = serializers.SerializerMethodField()
+    lesson_questions_status = serializers.SerializerMethodField()
 
     class Meta:
         model = LessonProgress
-        fields = ['id', 'lesson', 'completed', 'completed_at', 'video_position', 'updated_at']
+        fields = [
+            'id', 'lesson', 'completed', 'completed_at', 'video_position',
+            'required_quiz_passed', 'required_quiz_info', 'lesson_questions_status', 'updated_at'
+        ]
         read_only_fields = ['id', 'completed_at', 'updated_at']
+
+    def get_required_quiz_passed(self, obj):
+        """Check if user has passed the required quiz for this lesson."""
+        lesson = obj.lesson
+        if not lesson.required_quiz:
+            return None  # No quiz required
+
+        from quizzes.models import QuizAttempt
+        return QuizAttempt.objects.filter(
+            quiz=lesson.required_quiz,
+            student=obj.user,
+            passed=True
+        ).exists()
+
+    def get_required_quiz_info(self, obj):
+        """Get required quiz info if exists."""
+        lesson = obj.lesson
+        if lesson.required_quiz:
+            return {
+                'id': lesson.required_quiz.id,
+                'title': lesson.required_quiz.title,
+                'passing_score': lesson.required_quiz.passing_score,
+            }
+        return None
+
+    def get_lesson_questions_status(self, obj):
+        """Get status of lesson comprehension questions."""
+        lesson = obj.lesson
+        total_questions = lesson.questions.count()
+
+        if total_questions == 0:
+            return None  # No questions for this lesson
+
+        # Get user's answers
+        answers = LessonQuestionAnswer.objects.filter(
+            user=obj.user,
+            question__lesson=lesson
+        )
+        answered_count = answers.count()
+        correct_count = answers.filter(is_correct=True).count()
+        all_correct = correct_count == total_questions
+
+        return {
+            'total_questions': total_questions,
+            'answered_questions': answered_count,
+            'correct_answers': correct_count,
+            'all_correct': all_correct,
+            'can_complete_lesson': all_correct
+        }
 
 
 class LessonProgressUpdateSerializer(serializers.ModelSerializer):
@@ -214,6 +300,41 @@ class LessonProgressUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = LessonProgress
         fields = ['completed', 'video_position']
+
+    def validate_completed(self, value):
+        """Check if required quiz and lesson questions are passed before allowing completion."""
+        if value:  # Only check when marking as complete
+            lesson = self.instance.lesson
+            user = self.instance.user
+
+            # Check lesson comprehension questions first
+            total_questions = lesson.questions.count()
+            if total_questions > 0:
+                correct_answers = LessonQuestionAnswer.objects.filter(
+                    user=user,
+                    question__lesson=lesson,
+                    is_correct=True
+                ).count()
+
+                if correct_answers < total_questions:
+                    raise serializers.ValidationError(
+                        "You must answer all comprehension questions correctly before completing this lesson."
+                    )
+
+            # Also check standalone required quiz if set
+            if lesson.required_quiz:
+                from quizzes.models import QuizAttempt
+                has_passed = QuizAttempt.objects.filter(
+                    quiz=lesson.required_quiz,
+                    student=user,
+                    passed=True
+                ).exists()
+
+                if not has_passed:
+                    raise serializers.ValidationError(
+                        f"You must pass the quiz '{lesson.required_quiz.title}' before completing this lesson."
+                    )
+        return value
 
     def update(self, instance, validated_data):
         from django.utils import timezone
@@ -324,3 +445,111 @@ class GradingConfigSerializer(serializers.ModelSerializer):
         if total != 100:
             raise serializers.ValidationError(f'Weights must sum to 100%. Current total: {total}%')
         return data
+
+
+# ============================================
+# Lesson Questions (Mini Comprehension Quizzes)
+# ============================================
+
+class LessonQuestionChoiceSerializer(serializers.ModelSerializer):
+    """Serializer for lesson question choices."""
+
+    class Meta:
+        model = LessonQuestionChoice
+        fields = ['id', 'text', 'is_correct', 'order']
+
+
+class LessonQuestionChoiceStudentSerializer(serializers.ModelSerializer):
+    """Serializer for students - hides is_correct field."""
+
+    class Meta:
+        model = LessonQuestionChoice
+        fields = ['id', 'text', 'order']
+
+
+class LessonQuestionSerializer(serializers.ModelSerializer):
+    """Serializer for lesson questions (instructor view with answers)."""
+    choices = LessonQuestionChoiceSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = LessonQuestion
+        fields = ['id', 'lesson', 'text', 'order', 'choices', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class LessonQuestionStudentSerializer(serializers.ModelSerializer):
+    """Serializer for students - hides correct answer info."""
+    choices = LessonQuestionChoiceStudentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = LessonQuestion
+        fields = ['id', 'text', 'order', 'choices']
+
+
+class LessonQuestionCreateSerializer(serializers.Serializer):
+    """Serializer for creating/updating a lesson question with choices."""
+    text = serializers.CharField()
+    order = serializers.IntegerField(default=0)
+    choices = serializers.ListField(
+        child=serializers.DictField(),
+        min_length=2,
+        max_length=6,
+        help_text='List of choices with text, is_correct, and order'
+    )
+
+    def validate_choices(self, value):
+        # Ensure at least one choice is marked correct
+        has_correct = any(choice.get('is_correct', False) for choice in value)
+        if not has_correct:
+            raise serializers.ValidationError("At least one choice must be marked as correct.")
+
+        # Ensure each choice has text
+        for i, choice in enumerate(value):
+            if not choice.get('text', '').strip():
+                raise serializers.ValidationError(f"Choice {i+1} must have text.")
+
+        return value
+
+
+class LessonQuestionAnswerSerializer(serializers.ModelSerializer):
+    """Serializer for student answers to lesson questions."""
+    question_text = serializers.CharField(source='question.text', read_only=True)
+    selected_choice_text = serializers.CharField(source='selected_choice.text', read_only=True)
+
+    class Meta:
+        model = LessonQuestionAnswer
+        fields = ['id', 'question', 'question_text', 'selected_choice', 'selected_choice_text', 'is_correct', 'answered_at']
+        read_only_fields = ['id', 'is_correct', 'answered_at']
+
+
+class AnswerQuestionSerializer(serializers.Serializer):
+    """Serializer for answering a lesson question."""
+    question_id = serializers.IntegerField()
+    choice_id = serializers.IntegerField()
+
+    def validate(self, data):
+        question_id = data['question_id']
+        choice_id = data['choice_id']
+
+        try:
+            question = LessonQuestion.objects.get(id=question_id)
+        except LessonQuestion.DoesNotExist:
+            raise serializers.ValidationError({'question_id': 'Question not found.'})
+
+        try:
+            choice = LessonQuestionChoice.objects.get(id=choice_id, question=question)
+        except LessonQuestionChoice.DoesNotExist:
+            raise serializers.ValidationError({'choice_id': 'Choice not found for this question.'})
+
+        data['question'] = question
+        data['choice'] = choice
+        return data
+
+
+class LessonQuestionsStatusSerializer(serializers.Serializer):
+    """Serializer for lesson questions completion status."""
+    total_questions = serializers.IntegerField()
+    answered_questions = serializers.IntegerField()
+    correct_answers = serializers.IntegerField()
+    all_correct = serializers.BooleanField()
+    can_complete_lesson = serializers.BooleanField()

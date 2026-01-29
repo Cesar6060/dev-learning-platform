@@ -105,6 +105,14 @@ class Lesson(models.Model):
         blank=True,
         help_text='YouTube or Vimeo video ID'
     )
+    required_quiz = models.ForeignKey(
+        'quizzes.Quiz',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='required_for_lessons',
+        help_text='Quiz that must be passed to complete this lesson'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -255,3 +263,84 @@ class CourseGradingConfig(models.Model):
         total = (self.assignments_weight or 0) + (self.quizzes_weight or 0) + (self.participation_weight or 0)
         if total != 100:
             raise ValidationError(f'Weights must sum to 100%. Current total: {total}%')
+
+
+class LessonQuestion(models.Model):
+    """
+    A comprehension check question embedded in a lesson.
+    These are mini-quizzes to verify students read the content.
+    """
+    lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.CASCADE,
+        related_name='questions'
+    )
+    text = models.TextField(help_text='The question text')
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'courses_lessonquestion'
+        ordering = ['order']
+
+    def __str__(self):
+        return f"{self.lesson.title} - Q{self.order}: {self.text[:50]}"
+
+
+class LessonQuestionChoice(models.Model):
+    """
+    A choice/answer option for a lesson question.
+    """
+    question = models.ForeignKey(
+        LessonQuestion,
+        on_delete=models.CASCADE,
+        related_name='choices'
+    )
+    text = models.CharField(max_length=500)
+    is_correct = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = 'courses_lessonquestionchoice'
+        ordering = ['order']
+
+    def __str__(self):
+        correct_marker = " ✓" if self.is_correct else ""
+        return f"{self.text}{correct_marker}"
+
+
+class LessonQuestionAnswer(models.Model):
+    """
+    Tracks a student's answer to a lesson question.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='lesson_question_answers'
+    )
+    question = models.ForeignKey(
+        LessonQuestion,
+        on_delete=models.CASCADE,
+        related_name='answers'
+    )
+    selected_choice = models.ForeignKey(
+        LessonQuestionChoice,
+        on_delete=models.CASCADE,
+        related_name='selections'
+    )
+    is_correct = models.BooleanField()
+    answered_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'courses_lessonquestionanswer'
+        unique_together = ['user', 'question']
+
+    def __str__(self):
+        status = "correct" if self.is_correct else "incorrect"
+        return f"{self.user.email} - {self.question.text[:30]}: {status}"
+
+    def save(self, *args, **kwargs):
+        # Automatically set is_correct based on the selected choice
+        self.is_correct = self.selected_choice.is_correct
+        super().save(*args, **kwargs)

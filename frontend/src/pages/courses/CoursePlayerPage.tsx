@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { CourseSidebar } from '@/components/course/CourseSidebar';
 import { VideoPlayer } from '@/components/video/VideoPlayer';
+import { LessonQuestions } from '@/components/lesson/LessonQuestions';
 import { courseService } from '@/services/courses';
-import type { LessonProgress } from '@/types';
+import type { LessonProgress, LessonQuestionsStatus } from '@/types';
 import {
   Loader2, ChevronLeft, ChevronRight, CheckCircle, Circle,
-  X, Gamepad2
+  X, Gamepad2, FileQuestion, Lock
 } from 'lucide-react';
 
 interface LessonDetail {
@@ -70,6 +71,7 @@ export function CoursePlayerPage() {
     return localStorage.getItem('coursePlayerSidebarCollapsed') === 'true';
   });
   const [isMarkingComplete, setIsMarkingComplete] = useState(false);
+  const [questionsStatus, setQuestionsStatus] = useState<LessonQuestionsStatus | null>(null);
 
   // Track last saved position to avoid unnecessary API calls
   const lastSavedPositionRef = useRef<number>(0);
@@ -125,6 +127,7 @@ export function CoursePlayerPage() {
   const loadLesson = useCallback(async (id: number) => {
     try {
       setIsLessonLoading(true);
+      setQuestionsStatus(null); // Reset questions status when loading new lesson
       const [lessonData, progressData] = await Promise.all([
         courseService.getLesson(id),
         courseService.getLessonProgress(id)
@@ -399,21 +402,82 @@ export function CoursePlayerPage() {
                   {/* Lesson header */}
                   <div className="mb-6">
                     <h2 className="text-2xl font-bold mb-2">{currentLesson.title}</h2>
-                    <Button
-                      variant={progress?.completed ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={handleMarkComplete}
-                      disabled={isMarkingComplete}
-                    >
-                      {isMarkingComplete ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : progress?.completed ? (
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                      ) : (
-                        <Circle className="h-4 w-4 mr-2" />
-                      )}
-                      {progress?.completed ? 'Completed' : 'Mark Complete'}
-                    </Button>
+
+                    {/* Quiz requirement badge */}
+                    {progress?.required_quiz_info && !progress?.completed && (
+                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg mb-3 ${
+                        progress?.required_quiz_passed
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                      }`}>
+                        {progress?.required_quiz_passed ? (
+                          <>
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="text-sm font-medium">Quiz passed - Ready to complete</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileQuestion className="h-4 w-4" />
+                            <span className="text-sm font-medium">
+                              Complete quiz "{progress.required_quiz_info.title}" to finish this lesson
+                            </span>
+                            <Link
+                              to={`/quizzes/${progress.required_quiz_info.id}`}
+                              className="text-sm underline hover:no-underline ml-1"
+                            >
+                              Take Quiz →
+                            </Link>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Lesson questions requirement badge */}
+                    {questionsStatus && questionsStatus.total_questions > 0 && !progress?.completed && (
+                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg mb-3 ${
+                        questionsStatus.all_correct
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                      }`}>
+                        {questionsStatus.all_correct ? (
+                          <>
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="text-sm font-medium">Questions completed - Ready to mark complete</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileQuestion className="h-4 w-4" />
+                            <span className="text-sm font-medium">
+                              Answer all comprehension questions ({questionsStatus.correct_answers}/{questionsStatus.total_questions} correct)
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant={progress?.completed ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={handleMarkComplete}
+                        disabled={
+                          isMarkingComplete ||
+                          Boolean(progress?.required_quiz_info && !progress?.required_quiz_passed && !progress?.completed) ||
+                          Boolean(questionsStatus && questionsStatus.total_questions > 0 && !questionsStatus.all_correct && !progress?.completed)
+                        }
+                      >
+                        {isMarkingComplete ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : progress?.completed ? (
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                        ) : (progress?.required_quiz_info && !progress?.required_quiz_passed) || (questionsStatus && questionsStatus.total_questions > 0 && !questionsStatus.all_correct) ? (
+                          <Lock className="h-4 w-4 mr-2" />
+                        ) : (
+                          <Circle className="h-4 w-4 mr-2" />
+                        )}
+                        {progress?.completed ? 'Completed' : 'Mark Complete'}
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Video - currently only YouTube is supported */}
@@ -447,6 +511,12 @@ export function CoursePlayerPage() {
                       </CardContent>
                     </Card>
                   )}
+
+                  {/* Lesson Questions (Comprehension Check) */}
+                  <LessonQuestions
+                    lessonId={currentLesson.id}
+                    onStatusChange={setQuestionsStatus}
+                  />
                 </div>
               </div>
 

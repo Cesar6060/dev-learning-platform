@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { courseService, type CourseDetail, type UnitWithLessons, type LessonListItem } from '@/services/courses';
 import { assignmentService } from '@/services/assignments';
-import type { AssignmentListItem } from '@/types';
+import { quizzesService } from '@/services/quizzes';
+import { LessonQuestionsManager } from '@/components/lesson/LessonQuestionsManager';
+import type { AssignmentListItem, Quiz } from '@/types';
 import {
   Loader2, ChevronLeft, Plus, Trash2, Play, FileText,
-  Copy, CheckCircle, Settings, BookOpen, ClipboardList, Table, Megaphone, Eye, Users, FileQuestion
+  Copy, CheckCircle, Settings, BookOpen, ClipboardList, Table, Megaphone, Eye, Users, FileQuestion, HelpCircle
 } from 'lucide-react';
 import {
   Dialog,
@@ -58,6 +60,7 @@ type EditingLesson = {
   video_type: 'none' | 'youtube';
   video_id: string;
   order: number;
+  required_quiz?: number | null;
 };
 type EditingAssignment = {
   id?: number;
@@ -93,6 +96,7 @@ export function ManageCoursePage() {
   const [selectedUnitId, setSelectedUnitId] = useState<number | null>(null);
   const [lessonLoading, setLessonLoading] = useState(false);
   const [lessonError, setLessonError] = useState('');
+  const [unitQuizzes, setUnitQuizzes] = useState<Quiz[]>([]);
 
   // Assignment state
   const [assignments, setAssignments] = useState<AssignmentListItem[]>([]);
@@ -104,6 +108,10 @@ export function ManageCoursePage() {
 
   // Enrollment code copy state
   const [copied, setCopied] = useState(false);
+
+  // Lesson questions manager state
+  const [showQuestionsManager, setShowQuestionsManager] = useState(false);
+  const [selectedLessonForQuestions, setSelectedLessonForQuestions] = useState<{ id: number; title: string } | null>(null);
 
   useEffect(() => {
     if (code) {
@@ -195,7 +203,17 @@ export function ManageCoursePage() {
   };
 
   // Lesson handlers
-  const openAddLessonModal = (unitId: number) => {
+  const loadUnitQuizzes = async (unitId: number) => {
+    try {
+      const quizzes = await quizzesService.getUnitQuizzes(unitId);
+      setUnitQuizzes(quizzes);
+    } catch (err) {
+      console.error('Failed to load unit quizzes:', err);
+      setUnitQuizzes([]);
+    }
+  };
+
+  const openAddLessonModal = async (unitId: number) => {
     const unit = course?.units.find(u => u.id === unitId);
     const nextOrder = unit && unit.lessons.length > 0
       ? Math.max(...unit.lessons.map(l => l.order)) + 1
@@ -209,11 +227,13 @@ export function ManageCoursePage() {
       video_type: 'none',
       video_id: '',
       order: nextOrder,
+      required_quiz: null,
     });
     setShowLessonModal(true);
+    loadUnitQuizzes(unitId);
   };
 
-  const openEditLessonModal = (lesson: LessonListItem, unitId: number) => {
+  const openEditLessonModal = async (lesson: LessonListItem, unitId: number) => {
     setSelectedUnitId(unitId);
     // Only support 'youtube' or 'none' - treat any other type as 'none'
     const videoType = lesson.video_type === 'youtube' ? 'youtube' : 'none';
@@ -224,8 +244,10 @@ export function ManageCoursePage() {
       video_type: videoType,
       video_id: lesson.video_id || '',
       order: lesson.order,
+      required_quiz: lesson.required_quiz || null,
     });
     setShowLessonModal(true);
+    loadUnitQuizzes(unitId);
   };
 
   const handleSaveLesson = async (e: FormEvent) => {
@@ -246,6 +268,7 @@ export function ManageCoursePage() {
         video_type: editingLesson.video_type,
         video_id: videoId,
         order: editingLesson.order,
+        required_quiz: editingLesson.required_quiz || null,
       };
 
       if (editingLesson.id) {
@@ -575,6 +598,17 @@ export function ManageCoursePage() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => {
+                              setSelectedLessonForQuestions({ id: lesson.id, title: lesson.title });
+                              setShowQuestionsManager(true);
+                            }}
+                            title="Manage comprehension questions"
+                          >
+                            <HelpCircle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => openEditLessonModal(lesson, unit.id)}
                           >
                             Edit
@@ -809,6 +843,36 @@ export function ManageCoursePage() {
                 />
                 <p className="text-xs text-muted-foreground">
                   Supports GitHub Flavored Markdown (headers, lists, code blocks, links, etc.)
+                </p>
+              </div>
+
+              {/* Required Quiz */}
+              <div className="space-y-2">
+                <label htmlFor="required-quiz" className="text-sm font-medium">
+                  Required Quiz (Optional)
+                </label>
+                <select
+                  id="required-quiz"
+                  value={editingLesson?.required_quiz || ''}
+                  onChange={(e) =>
+                    setEditingLesson(prev =>
+                      prev
+                        ? { ...prev, required_quiz: e.target.value ? Number(e.target.value) : null }
+                        : null
+                    )
+                  }
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="">No quiz required</option>
+                  {unitQuizzes.map((quiz) => (
+                    <option key={quiz.id} value={quiz.id}>
+                      {quiz.title} (Pass: {quiz.passing_score}%)
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Students must pass the selected quiz before they can mark this lesson complete.
+                  {unitQuizzes.length === 0 && ' No quizzes in this unit yet.'}
                 </p>
               </div>
             </div>
@@ -1079,6 +1143,21 @@ export function ManageCoursePage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Lesson Questions Manager */}
+      {selectedLessonForQuestions && (
+        <LessonQuestionsManager
+          lessonId={selectedLessonForQuestions.id}
+          lessonTitle={selectedLessonForQuestions.title}
+          open={showQuestionsManager}
+          onOpenChange={(open) => {
+            setShowQuestionsManager(open);
+            if (!open) {
+              setSelectedLessonForQuestions(null);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
