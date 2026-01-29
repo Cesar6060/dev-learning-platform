@@ -365,9 +365,41 @@ class GradeSubmissionView(generics.CreateAPIView, generics.UpdateAPIView):
         submission.status = 'graded'
         submission.save()
 
+        # Send grade notification email
+        self._send_grade_notification(submission, grade)
+
         return Response(
             SubmissionSerializer(submission).data,
             status=status.HTTP_201_CREATED
+        )
+
+    def _send_grade_notification(self, submission, grade):
+        """Send email notification to student about their grade."""
+        from accounts.models import UserPreferences
+        from core.email import send_grade_notification_email
+        from django.conf import settings
+
+        try:
+            prefs = UserPreferences.objects.get(user=submission.student)
+            if not prefs.email_grades:
+                return
+        except UserPreferences.DoesNotExist:
+            pass  # Send email by default if no preferences
+
+        assignment = submission.assignment
+        course = assignment.unit.course
+        points_possible = assignment.points
+        percentage = (float(grade.points) / points_possible * 100) if points_possible > 0 else 0
+
+        send_grade_notification_email(
+            recipient_email=submission.student.email,
+            course_title=course.title,
+            assignment_title=assignment.title,
+            points_earned=float(grade.points),
+            points_possible=points_possible,
+            percentage=percentage,
+            feedback=grade.feedback or '',
+            assignment_url=f"{settings.FRONTEND_URL}/courses/{course.code}/assignments/{assignment.id}"
         )
 
     def update(self, request, *args, **kwargs):
@@ -458,12 +490,14 @@ def quick_grade(request, assignment_id, student_id):
         submission.save()
 
     # Create or update grade
+    is_new_grade = not (hasattr(submission, 'grade') and submission.grade)
     if hasattr(submission, 'grade') and submission.grade:
         submission.grade.points = points
         submission.grade.grader = request.user
         submission.grade.save()
+        grade = submission.grade
     else:
-        Grade.objects.create(
+        grade = Grade.objects.create(
             submission=submission,
             grader=request.user,
             points=points,
@@ -473,6 +507,10 @@ def quick_grade(request, assignment_id, student_id):
     submission.status = 'graded'
     submission.save()
 
+    # Send grade notification email for new grades only
+    if is_new_grade:
+        _send_quick_grade_notification(submission, grade, assignment, course)
+
     return Response({
         'success': True,
         'assignment_id': assignment_id,
@@ -480,3 +518,31 @@ def quick_grade(request, assignment_id, student_id):
         'points': points,
         'max_points': assignment.max_points,
     })
+
+
+def _send_quick_grade_notification(submission, grade, assignment, course):
+    """Send email notification to student about their grade."""
+    from accounts.models import UserPreferences
+    from core.email import send_grade_notification_email
+    from django.conf import settings
+
+    try:
+        prefs = UserPreferences.objects.get(user=submission.student)
+        if not prefs.email_grades:
+            return
+    except UserPreferences.DoesNotExist:
+        pass  # Send email by default if no preferences
+
+    points_possible = assignment.max_points
+    percentage = (float(grade.points) / points_possible * 100) if points_possible > 0 else 0
+
+    send_grade_notification_email(
+        recipient_email=submission.student.email,
+        course_title=course.title,
+        assignment_title=assignment.title,
+        points_earned=float(grade.points),
+        points_possible=points_possible,
+        percentage=percentage,
+        feedback=grade.feedback or '',
+        assignment_url=f"{settings.FRONTEND_URL}/courses/{course.code}/assignments/{assignment.id}"
+    )
