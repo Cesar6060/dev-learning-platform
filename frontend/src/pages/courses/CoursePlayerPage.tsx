@@ -10,8 +10,7 @@ import { LessonQuestions } from '@/components/lesson/LessonQuestions';
 import { courseService } from '@/services/courses';
 import type { LessonProgress, LessonQuestionsStatus } from '@/types';
 import {
-  Loader2, ChevronLeft, ChevronRight, CheckCircle, Circle,
-  X, Gamepad2, FileQuestion, Lock
+  Loader2, ChevronLeft, ChevronRight, CheckCircle, Circle, FileQuestion
 } from 'lucide-react';
 
 interface LessonDetail {
@@ -337,23 +336,17 @@ export function CoursePlayerPage() {
     <div className="h-screen flex flex-col bg-background animate-in fade-in duration-300">
       {/* Learning Mode Header */}
       <div className="h-14 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 flex items-center px-4 gap-4">
-        {/* Logo & Exit */}
-        <div className="flex items-center gap-3">
-          <Link to="/" className="flex items-center text-muted-foreground hover:text-foreground">
-            <Gamepad2 className="h-5 w-5" />
-          </Link>
-          <div className="h-6 w-px bg-border" />
-          <Link to={`/courses/${code}`}>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted"
-            >
-              <X className="h-4 w-4" />
-              <span className="hidden sm:inline">Exit Learning Mode</span>
-            </Button>
-          </Link>
-        </div>
+        {/* Exit Learning Mode */}
+        <Link to={`/courses/${code}`}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">Exit</span>
+          </Button>
+        </Link>
 
         {/* Course Title */}
         <div className="flex-1 min-w-0 text-center">
@@ -458,29 +451,34 @@ export function CoursePlayerPage() {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-3">
-                      <Button
-                        variant={progress?.completed ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={handleMarkComplete}
-                        disabled={
-                          isMarkingComplete ||
-                          Boolean(progress?.required_quiz_info && !progress?.required_quiz_passed && !progress?.completed) ||
-                          Boolean(questionsStatus && questionsStatus.total_questions > 0 && !questionsStatus.can_complete_lesson && !progress?.completed)
-                        }
-                      >
-                        {isMarkingComplete ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : progress?.completed ? (
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                        ) : (progress?.required_quiz_info && !progress?.required_quiz_passed) || (questionsStatus && questionsStatus.total_questions > 0 && !questionsStatus.can_complete_lesson) ? (
-                          <Lock className="h-4 w-4 mr-2" />
-                        ) : (
-                          <Circle className="h-4 w-4 mr-2" />
-                        )}
-                        {progress?.completed ? 'Completed' : 'Mark Complete'}
-                      </Button>
-                    </div>
+                    {/* Only show Mark Complete button if there's no quiz requirement */}
+                    {!progress?.required_quiz_info && (!questionsStatus || questionsStatus.total_questions === 0) && (
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant={progress?.completed ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={handleMarkComplete}
+                          disabled={isMarkingComplete}
+                        >
+                          {isMarkingComplete ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : progress?.completed ? (
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                          ) : (
+                            <Circle className="h-4 w-4 mr-2" />
+                          )}
+                          {progress?.completed ? 'Completed' : 'Mark Complete'}
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Show completion status when there IS a quiz requirement */}
+                    {(progress?.required_quiz_info || (questionsStatus && questionsStatus.total_questions > 0)) && progress?.completed && (
+                      <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                        <CheckCircle className="h-5 w-5" />
+                        <span className="font-medium">Lesson Completed</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Video - currently only YouTube is supported */}
