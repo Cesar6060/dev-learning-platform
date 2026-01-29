@@ -163,7 +163,7 @@ def notify_student_of_grade(submission, grade, is_update: bool = False) -> bool:
 
     assignment = submission.assignment
     course = assignment.unit.course
-    points_possible = assignment.points
+    points_possible = assignment.max_points
     percentage = (float(grade.points) / points_possible * 100) if points_possible > 0 else 0
 
     return send_grade_notification_email(
