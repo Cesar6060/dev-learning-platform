@@ -890,20 +890,15 @@ class CourseAnnouncementsView(generics.ListCreateAPIView):
 
             # Send email if announcement has send_email=True and user has opted in
             if announcement.send_email:
+                # Default to sending email if no preferences exist
+                should_send = True
                 try:
                     prefs = UserPreferences.objects.get(user=enrollment.user)
-                    if prefs.email_announcements:
-                        send_announcement_email(
-                            recipient_email=enrollment.user.email,
-                            course_title=announcement.course.title,
-                            announcement_title=announcement.title,
-                            announcement_content=announcement.content,
-                            announcement_url=f"{settings.FRONTEND_URL}/courses/{announcement.course.code}/announcements/{announcement.id}",
-                            instructor_name=announcement.author.get_full_name() or announcement.author.email,
-                            posted_date=announcement.created_at.strftime('%B %d, %Y')
-                        )
+                    should_send = prefs.email_announcements
                 except UserPreferences.DoesNotExist:
-                    # If no preferences, send email by default
+                    pass
+
+                if should_send:
                     send_announcement_email(
                         recipient_email=enrollment.user.email,
                         course_title=announcement.course.title,

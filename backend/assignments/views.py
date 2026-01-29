@@ -413,6 +413,9 @@ class GradeSubmissionView(generics.CreateAPIView, generics.UpdateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save(grader=request.user)
 
+        # Send grade notification email for updates too
+        self._send_grade_notification(submission, grade)
+
         return Response(SubmissionSerializer(submission).data)
 
 
