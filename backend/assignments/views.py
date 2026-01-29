@@ -366,40 +366,12 @@ class GradeSubmissionView(generics.CreateAPIView, generics.UpdateAPIView):
         submission.save()
 
         # Send grade notification email
-        self._send_grade_notification(submission, grade)
+        from core.email import notify_student_of_grade
+        notify_student_of_grade(submission, grade, is_update=False)
 
         return Response(
             SubmissionSerializer(submission).data,
             status=status.HTTP_201_CREATED
-        )
-
-    def _send_grade_notification(self, submission, grade):
-        """Send email notification to student about their grade."""
-        from accounts.models import UserPreferences
-        from core.email import send_grade_notification_email
-        from django.conf import settings
-
-        try:
-            prefs = UserPreferences.objects.get(user=submission.student)
-            if not prefs.email_grades:
-                return
-        except UserPreferences.DoesNotExist:
-            pass  # Send email by default if no preferences
-
-        assignment = submission.assignment
-        course = assignment.unit.course
-        points_possible = assignment.points
-        percentage = (float(grade.points) / points_possible * 100) if points_possible > 0 else 0
-
-        send_grade_notification_email(
-            recipient_email=submission.student.email,
-            course_title=course.title,
-            assignment_title=assignment.title,
-            points_earned=float(grade.points),
-            points_possible=points_possible,
-            percentage=percentage,
-            feedback=grade.feedback or '',
-            assignment_url=f"{settings.FRONTEND_URL}/courses/{course.code}/assignments/{assignment.id}"
         )
 
     def update(self, request, *args, **kwargs):
@@ -409,12 +381,16 @@ class GradeSubmissionView(generics.CreateAPIView, generics.UpdateAPIView):
             return self.create(request, *args, **kwargs)
 
         grade = submission.grade
+        original_points = grade.points  # Track for change detection
+
         serializer = self.get_serializer(grade, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save(grader=request.user)
 
-        # Send grade notification email for updates too
-        self._send_grade_notification(submission, grade)
+        # Send grade notification email only if points changed
+        if grade.points != original_points:
+            from core.email import notify_student_of_grade
+            notify_student_of_grade(submission, grade, is_update=True)
 
         return Response(SubmissionSerializer(submission).data)
 
@@ -512,7 +488,8 @@ def quick_grade(request, assignment_id, student_id):
 
     # Send grade notification email for new grades only
     if is_new_grade:
-        _send_quick_grade_notification(submission, grade, assignment, course)
+        from core.email import notify_student_of_grade
+        notify_student_of_grade(submission, grade, is_update=False)
 
     return Response({
         'success': True,
@@ -521,31 +498,3 @@ def quick_grade(request, assignment_id, student_id):
         'points': points,
         'max_points': assignment.max_points,
     })
-
-
-def _send_quick_grade_notification(submission, grade, assignment, course):
-    """Send email notification to student about their grade."""
-    from accounts.models import UserPreferences
-    from core.email import send_grade_notification_email
-    from django.conf import settings
-
-    try:
-        prefs = UserPreferences.objects.get(user=submission.student)
-        if not prefs.email_grades:
-            return
-    except UserPreferences.DoesNotExist:
-        pass  # Send email by default if no preferences
-
-    points_possible = assignment.max_points
-    percentage = (float(grade.points) / points_possible * 100) if points_possible > 0 else 0
-
-    send_grade_notification_email(
-        recipient_email=submission.student.email,
-        course_title=course.title,
-        assignment_title=assignment.title,
-        points_earned=float(grade.points),
-        points_possible=points_possible,
-        percentage=percentage,
-        feedback=grade.feedback or '',
-        assignment_url=f"{settings.FRONTEND_URL}/courses/{course.code}/assignments/{assignment.id}"
-    )

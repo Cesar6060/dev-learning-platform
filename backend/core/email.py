@@ -50,7 +50,7 @@ def send_templated_email(
         )
         email.attach_alternative(html_content, "text/html")
         
-        email.send(fail_silently=False)
+        email.send(fail_silently=fail_silently)
         logger.info(f"Email sent successfully to {recipient_list}")
         return True
         
@@ -130,3 +130,69 @@ def send_grade_notification_email(
         },
         recipient_list=[recipient_email]
     )
+
+
+def notify_student_of_grade(submission, grade, is_update: bool = False) -> bool:
+    """
+    Send grade notification email to student, respecting preferences.
+
+    Args:
+        submission: The Submission object
+        grade: The Grade object
+        is_update: If True, this is a grade update (not initial grading)
+
+    Returns:
+        True if email was sent, False otherwise
+    """
+    from accounts.models import UserPreferences
+    from django.conf import settings
+
+    # Check if student wants grade emails
+    try:
+        prefs = UserPreferences.objects.get(user=submission.student)
+        if not prefs.email_grades:
+            return False
+    except UserPreferences.DoesNotExist:
+        pass  # Send by default if no preferences
+
+    # Skip update notifications if grade hasn't meaningfully changed
+    # (This prevents spam when instructor makes minor adjustments)
+    if is_update and hasattr(grade, '_original_points'):
+        if grade._original_points == grade.points:
+            return False
+
+    assignment = submission.assignment
+    course = assignment.unit.course
+    points_possible = assignment.points
+    percentage = (float(grade.points) / points_possible * 100) if points_possible > 0 else 0
+
+    return send_grade_notification_email(
+        recipient_email=submission.student.email,
+        course_title=course.title,
+        assignment_title=assignment.title,
+        points_earned=float(grade.points),
+        points_possible=points_possible,
+        percentage=percentage,
+        feedback=grade.feedback or '',
+        assignment_url=f"{settings.FRONTEND_URL}/courses/{course.code}/assignments/{assignment.id}"
+    )
+
+
+def send_emails_async(email_tasks: list) -> None:
+    """
+    Send multiple emails in a background thread to avoid blocking.
+
+    Args:
+        email_tasks: List of tuples (function, args, kwargs)
+    """
+    import threading
+
+    def send_all():
+        for func, args, kwargs in email_tasks:
+            try:
+                func(*args, **kwargs)
+            except Exception as e:
+                logger.error(f"Async email failed: {str(e)}")
+
+    thread = threading.Thread(target=send_all, daemon=True)
+    thread.start()

@@ -870,13 +870,15 @@ class CourseAnnouncementsView(generics.ListCreateAPIView):
         """Create notifications and optionally send emails to enrolled students."""
         from notifications.models import Notification
         from accounts.models import UserPreferences
-        from core.email import send_announcement_email
+        from core.email import send_announcement_email, send_emails_async
         from django.conf import settings
 
+        # Prefetch user preferences to avoid N+1 queries
         enrollments = Enrollment.objects.filter(
             course=announcement.course, is_active=True
-        ).select_related('user')
+        ).select_related('user').prefetch_related('user__userpreferences')
         notifications = []
+        email_tasks = []
 
         for enrollment in enrollments:
             # Create in-app notification
@@ -888,29 +890,37 @@ class CourseAnnouncementsView(generics.ListCreateAPIView):
                 related_url=f"/courses/{announcement.course.code}/announcements/{announcement.id}"
             ))
 
-            # Send email if announcement has send_email=True and user has opted in
+            # Queue email if announcement has send_email=True and user has opted in
             if announcement.send_email:
-                # Default to sending email if no preferences exist
+                # Check preferences (already prefetched)
                 should_send = True
                 try:
-                    prefs = UserPreferences.objects.get(user=enrollment.user)
+                    prefs = enrollment.user.userpreferences
                     should_send = prefs.email_announcements
                 except UserPreferences.DoesNotExist:
                     pass
 
                 if should_send:
-                    send_announcement_email(
-                        recipient_email=enrollment.user.email,
-                        course_title=announcement.course.title,
-                        announcement_title=announcement.title,
-                        announcement_content=announcement.content,
-                        announcement_url=f"{settings.FRONTEND_URL}/courses/{announcement.course.code}/announcements/{announcement.id}",
-                        instructor_name=announcement.author.get_full_name() or announcement.author.email,
-                        posted_date=announcement.created_at.strftime('%B %d, %Y')
-                    )
+                    email_tasks.append((
+                        send_announcement_email,
+                        (),
+                        {
+                            'recipient_email': enrollment.user.email,
+                            'course_title': announcement.course.title,
+                            'announcement_title': announcement.title,
+                            'announcement_content': announcement.content,
+                            'announcement_url': f"{settings.FRONTEND_URL}/courses/{announcement.course.code}/announcements/{announcement.id}",
+                            'instructor_name': announcement.author.get_full_name() or announcement.author.email,
+                            'posted_date': announcement.created_at.strftime('%B %d, %Y'),
+                        }
+                    ))
 
         if notifications:
             Notification.objects.bulk_create(notifications)
+
+        # Send emails asynchronously to avoid blocking
+        if email_tasks:
+            send_emails_async(email_tasks)
 
 
 def calculate_letter_grade(percentage):
