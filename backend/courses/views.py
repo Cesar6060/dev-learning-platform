@@ -1867,6 +1867,16 @@ def lesson_question_detail(request, lesson_id, question_id):
         # Students will need to re-answer the updated question
         question.answers.all().delete()
 
+        # Clear all quiz attempts for this lesson since questions changed
+        # Students will need to retake the quiz
+        LessonQuizAttempt.objects.filter(lesson=lesson).delete()
+
+        # Invalidate lesson completions since quiz content changed
+        LessonProgress.objects.filter(lesson=lesson, completed=True).update(
+            completed=False,
+            completed_at=None
+        )
+
         # Delete existing choices and recreate
         question.choices.all().delete()
         for i, choice_data in enumerate(data['choices']):
@@ -1886,6 +1896,18 @@ def lesson_question_detail(request, lesson_id, question_id):
                 {'error': 'Only the instructor can delete questions.'},
                 status=status.HTTP_403_FORBIDDEN
             )
+
+        # Clear all quiz attempts for this lesson since questions changed
+        LessonQuizAttempt.objects.filter(lesson=lesson).delete()
+
+        # Clear all answers for this lesson
+        LessonQuestionAnswer.objects.filter(question__lesson=lesson).delete()
+
+        # Invalidate lesson completions since quiz content changed
+        LessonProgress.objects.filter(lesson=lesson, completed=True).update(
+            completed=False,
+            completed_at=None
+        )
 
         question.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
