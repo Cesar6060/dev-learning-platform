@@ -6,9 +6,10 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { courseService } from '@/services/courses';
 import { VideoPlayer } from '@/components/video/VideoPlayer';
-import type { Lesson, LessonProgress } from '@/types';
+import { LessonQuestions } from '@/components/lesson/LessonQuestions';
+import type { Lesson, LessonProgress, LessonQuestionsStatus } from '@/types';
 import {
-  Loader2, ChevronLeft, CheckCircle, Circle, BookOpen
+  Loader2, ChevronLeft, CheckCircle, Circle, BookOpen, Paperclip, FileText, Image, File, Download, FileQuestion
 } from 'lucide-react';
 
 export function LessonPage() {
@@ -16,6 +17,7 @@ export function LessonPage() {
 
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [progress, setProgress] = useState<LessonProgress | null>(null);
+  const [questionsStatus, setQuestionsStatus] = useState<LessonQuestionsStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isMarkingComplete, setIsMarkingComplete] = useState(false);
@@ -149,22 +151,80 @@ export function LessonPage() {
           </Button>
         </Link>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant={progress?.completed ? 'default' : 'outline'}
-            size="sm"
-            onClick={handleMarkComplete}
-            disabled={isMarkingComplete}
-          >
-            {isMarkingComplete ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : progress?.completed ? (
-              <CheckCircle className="h-4 w-4 mr-2" />
-            ) : (
-              <Circle className="h-4 w-4 mr-2" />
-            )}
-            {progress?.completed ? 'Completed' : 'Mark Complete'}
-          </Button>
+        <div className="flex items-center gap-4">
+          {/* Required Quiz Badge */}
+          {progress?.required_quiz_info && !progress?.completed && (
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+              progress?.required_quiz_passed
+                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+            }`}>
+              {progress?.required_quiz_passed ? (
+                <>
+                  <CheckCircle className="h-4 w-4" />
+                  Quiz Passed
+                </>
+              ) : (
+                <>
+                  <FileQuestion className="h-4 w-4" />
+                  <Link
+                    to={`/quizzes/${progress.required_quiz_info.id}`}
+                    className="hover:underline"
+                  >
+                    Complete quiz "{progress.required_quiz_info.title}" to finish this lesson
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Comprehension Questions Badge */}
+          {questionsStatus && questionsStatus.total_questions > 0 && !progress?.completed && (
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+              questionsStatus.can_complete_lesson
+                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+            }`}>
+              {questionsStatus.can_complete_lesson ? (
+                <>
+                  <CheckCircle className="h-4 w-4" />
+                  Quiz Passed
+                </>
+              ) : (
+                <>
+                  <FileQuestion className="h-4 w-4" />
+                  Complete the comprehension quiz to finish this lesson
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Only show Mark Complete button if there's no quiz requirement */}
+          {!progress?.required_quiz_info && (!questionsStatus || questionsStatus.total_questions === 0) && (
+            <Button
+              variant={progress?.completed ? 'default' : 'outline'}
+              size="sm"
+              onClick={handleMarkComplete}
+              disabled={isMarkingComplete}
+            >
+              {isMarkingComplete ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : progress?.completed ? (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              ) : (
+                <Circle className="h-4 w-4 mr-2" />
+              )}
+              {progress?.completed ? 'Completed' : 'Mark Complete'}
+            </Button>
+          )}
+
+          {/* Show completion status when there IS a quiz requirement */}
+          {(progress?.required_quiz_info || (questionsStatus && questionsStatus.total_questions > 0)) && progress?.completed && (
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+              <CheckCircle className="h-4 w-4" />
+              Completed
+            </div>
+          )}
         </div>
       </div>
 
@@ -204,6 +264,60 @@ export function LessonPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Attachments */}
+      {lesson.attachments && lesson.attachments.length > 0 && (
+        <Card className="mt-6">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Paperclip className="h-4 w-4 text-muted-foreground" />
+              <h3 className="font-medium">Lesson Materials</h3>
+            </div>
+            <div className="space-y-2">
+              {lesson.attachments.map((attachment) => {
+                const fileType = attachment.file_type.toLowerCase();
+                const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(fileType);
+                const isDoc = ['pdf', 'doc', 'docx', 'txt', 'md'].includes(fileType);
+
+                return (
+                  <a
+                    key={attachment.id}
+                    href={attachment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    {isImage ? (
+                      <Image className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                    ) : isDoc ? (
+                      <FileText className="h-5 w-5 text-red-500 flex-shrink-0" />
+                    ) : (
+                      <File className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    )}
+                    <span className="flex-1 text-sm font-medium truncate">
+                      {attachment.filename}
+                    </span>
+                    <span className="text-xs text-muted-foreground flex-shrink-0">
+                      {attachment.file_size < 1024 * 1024
+                        ? `${(attachment.file_size / 1024).toFixed(0)} KB`
+                        : `${(attachment.file_size / (1024 * 1024)).toFixed(1)} MB`}
+                    </span>
+                    <Download className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  </a>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Lesson Questions (Comprehension Check) */}
+      <div className="mt-6">
+        <LessonQuestions
+          lessonId={lesson.id}
+          onStatusChange={setQuestionsStatus}
+        />
+      </div>
     </div>
   );
 }
