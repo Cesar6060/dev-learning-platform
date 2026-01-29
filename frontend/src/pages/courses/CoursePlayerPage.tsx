@@ -343,12 +343,15 @@ export function CoursePlayerPage() {
             <Gamepad2 className="h-5 w-5" />
           </Link>
           <div className="h-6 w-px bg-border" />
-          <Link
-            to={`/courses/${code}`}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors group"
-          >
-            <X className="h-4 w-4" />
-            <span className="text-sm hidden sm:inline group-hover:text-primary">Exit Learning Mode</span>
+          <Link to={`/courses/${code}`}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted"
+            >
+              <X className="h-4 w-4" />
+              <span className="hidden sm:inline">Exit Learning Mode</span>
+            </Button>
           </Link>
         </div>
 
@@ -435,20 +438,20 @@ export function CoursePlayerPage() {
                     {/* Lesson questions requirement badge */}
                     {questionsStatus && questionsStatus.total_questions > 0 && !progress?.completed && (
                       <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg mb-3 ${
-                        questionsStatus.all_correct
+                        questionsStatus.can_complete_lesson
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                           : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
                       }`}>
-                        {questionsStatus.all_correct ? (
+                        {questionsStatus.can_complete_lesson ? (
                           <>
                             <CheckCircle className="h-4 w-4" />
-                            <span className="text-sm font-medium">Questions completed - Ready to mark complete</span>
+                            <span className="text-sm font-medium">Quiz passed - Ready to mark complete</span>
                           </>
                         ) : (
                           <>
                             <FileQuestion className="h-4 w-4" />
                             <span className="text-sm font-medium">
-                              Answer all comprehension questions ({questionsStatus.correct_answers}/{questionsStatus.total_questions} correct)
+                              Complete the comprehension quiz to finish this lesson
                             </span>
                           </>
                         )}
@@ -463,14 +466,14 @@ export function CoursePlayerPage() {
                         disabled={
                           isMarkingComplete ||
                           Boolean(progress?.required_quiz_info && !progress?.required_quiz_passed && !progress?.completed) ||
-                          Boolean(questionsStatus && questionsStatus.total_questions > 0 && !questionsStatus.all_correct && !progress?.completed)
+                          Boolean(questionsStatus && questionsStatus.total_questions > 0 && !questionsStatus.can_complete_lesson && !progress?.completed)
                         }
                       >
                         {isMarkingComplete ? (
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         ) : progress?.completed ? (
                           <CheckCircle className="h-4 w-4 mr-2" />
-                        ) : (progress?.required_quiz_info && !progress?.required_quiz_passed) || (questionsStatus && questionsStatus.total_questions > 0 && !questionsStatus.all_correct) ? (
+                        ) : (progress?.required_quiz_info && !progress?.required_quiz_passed) || (questionsStatus && questionsStatus.total_questions > 0 && !questionsStatus.can_complete_lesson) ? (
                           <Lock className="h-4 w-4 mr-2" />
                         ) : (
                           <Circle className="h-4 w-4 mr-2" />
