@@ -498,10 +498,12 @@ class LessonQuestionCreateSerializer(serializers.Serializer):
     )
 
     def validate_choices(self, value):
-        # Ensure at least one choice is marked correct
-        has_correct = any(choice.get('is_correct', False) for choice in value)
-        if not has_correct:
-            raise serializers.ValidationError("At least one choice must be marked as correct.")
+        # Ensure exactly one choice is marked correct
+        correct_count = sum(1 for choice in value if choice.get('is_correct', False))
+        if correct_count == 0:
+            raise serializers.ValidationError("Exactly one choice must be marked as correct.")
+        if correct_count > 1:
+            raise serializers.ValidationError("Only one choice can be marked as correct.")
 
         # Ensure each choice has text
         for i, choice in enumerate(value):

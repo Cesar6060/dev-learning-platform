@@ -287,6 +287,16 @@ class LessonQuestion(models.Model):
     def __str__(self):
         return f"{self.lesson.title} - Q{self.order}: {self.text[:50]}"
 
+    def clean(self):
+        """Validate that exactly one choice is marked as correct."""
+        from django.core.exceptions import ValidationError
+        if self.pk:  # Only validate if question already exists (has choices)
+            correct_count = self.choices.filter(is_correct=True).count()
+            if correct_count == 0:
+                raise ValidationError('Question must have at least one correct answer.')
+            if correct_count > 1:
+                raise ValidationError('Question can only have one correct answer.')
+
 
 class LessonQuestionChoice(models.Model):
     """
@@ -326,8 +336,10 @@ class LessonQuestionAnswer(models.Model):
     )
     selected_choice = models.ForeignKey(
         LessonQuestionChoice,
-        on_delete=models.CASCADE,
-        related_name='selections'
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='selections',
+        help_text='Set to NULL if choice is deleted (e.g., when question is edited)'
     )
     is_correct = models.BooleanField()
     answered_at = models.DateTimeField(auto_now_add=True)
@@ -342,5 +354,6 @@ class LessonQuestionAnswer(models.Model):
 
     def save(self, *args, **kwargs):
         # Automatically set is_correct based on the selected choice
-        self.is_correct = self.selected_choice.is_correct
+        if self.selected_choice:
+            self.is_correct = self.selected_choice.is_correct
         super().save(*args, **kwargs)

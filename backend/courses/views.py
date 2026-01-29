@@ -1856,6 +1856,10 @@ def lesson_question_detail(request, lesson_id, question_id):
             question.order = data['order']
         question.save()
 
+        # Delete existing student answers since question is being modified
+        # Students will need to re-answer the updated question
+        question.answers.all().delete()
+
         # Delete existing choices and recreate
         question.choices.all().delete()
         for i, choice_data in enumerate(data['choices']):
