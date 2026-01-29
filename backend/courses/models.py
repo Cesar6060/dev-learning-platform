@@ -360,6 +360,8 @@ class LessonQuestionAnswer(models.Model):
         # Automatically set is_correct based on the selected choice
         if self.selected_choice:
             self.is_correct = self.selected_choice.is_correct
+        else:
+            self.is_correct = False
         super().save(*args, **kwargs)
 
 
