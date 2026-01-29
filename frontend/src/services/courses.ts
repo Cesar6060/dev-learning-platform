@@ -1,5 +1,5 @@
 import api from './api';
-import type { Course, Unit, Lesson, Enrollment, LessonProgress, GradingConfig, GradeSummary, EnhancedDashboard, LessonQuestion, LessonQuestionsStatus, AnswerQuestionResult } from '../types';
+import type { Course, Unit, Lesson, Enrollment, LessonProgress, GradingConfig, GradeSummary, EnhancedDashboard, LessonQuestion, LessonQuestionsStatus, AnswerQuestionResult, QuizSubmissionResult } from '../types';
 
 // Re-export types for convenience
 export type { Unit, Lesson } from '../types';
@@ -473,6 +473,13 @@ export const courseService = {
 
   async getLessonQuestionsStatus(lessonId: number): Promise<LessonQuestionsStatus> {
     const response = await api.get<LessonQuestionsStatus>(`/courses/lessons/${lessonId}/questions-status/`);
+    return response.data;
+  },
+
+  async submitLessonQuiz(lessonId: number, answers: Record<string, number>): Promise<QuizSubmissionResult> {
+    const response = await api.post<QuizSubmissionResult>(`/courses/lessons/${lessonId}/submit-quiz/`, {
+      answers,
+    });
     return response.data;
   },
 };

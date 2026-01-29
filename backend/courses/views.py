@@ -10,7 +10,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 from datetime import timedelta
 
-from .models import Course, Unit, Lesson, Enrollment, LessonProgress, Announcement, LessonQuestion, LessonQuestionChoice, LessonQuestionAnswer
+from .models import Course, Unit, Lesson, Enrollment, LessonProgress, Announcement, LessonQuestion, LessonQuestionChoice, LessonQuestionAnswer, LessonQuizAttempt
 from .serializers import (
     CourseSerializer, CourseListSerializer, CourseCreateSerializer,
     InstructorCourseSerializer, UnitSerializer, UnitCreateSerializer,
@@ -1798,6 +1798,13 @@ def lesson_questions(request, lesson_id):
                 order=choice_data.get('order', i)
             )
 
+        # Invalidate lesson completions - students need to answer the new question
+        # Reset completed status for all students who completed this lesson
+        LessonProgress.objects.filter(lesson=lesson, completed=True).update(
+            completed=False,
+            completed_at=None
+        )
+
         # Return the created question with choices
         question.refresh_from_db()
         return Response(
@@ -1979,10 +1986,156 @@ def lesson_questions_status(request, lesson_id):
     correct_count = answers.filter(is_correct=True).count()
     all_correct = correct_count == total_questions
 
+    # Get attempt info
+    attempts = LessonQuizAttempt.objects.filter(
+        user=request.user,
+        lesson=lesson
+    )
+    attempt_count = attempts.count()
+    best_attempt = attempts.filter(passed=True).first()
+    max_attempts = lesson.max_quiz_attempts  # 0 = unlimited
+
+    # Check if can attempt
+    can_attempt = max_attempts == 0 or attempt_count < max_attempts
+    attempts_remaining = None if max_attempts == 0 else max(0, max_attempts - attempt_count)
+
     return Response({
         'total_questions': total_questions,
         'answered_questions': answered_count,
         'correct_answers': correct_count,
         'all_correct': all_correct,
         'can_complete_lesson': all_correct,
+        'attempt_count': attempt_count,
+        'max_attempts': max_attempts if max_attempts > 0 else None,
+        'attempts_remaining': attempts_remaining,
+        'can_attempt': can_attempt,
+        'has_passed': best_attempt is not None,
+    })
+
+
+@api_view(['POST'])
+@perm_classes([IsAuthenticated])
+def submit_lesson_quiz(request, lesson_id):
+    """
+    Submit all answers for a lesson quiz at once.
+    Creates an attempt record and stores all answers.
+    """
+    lesson = get_object_or_404(Lesson, pk=lesson_id)
+    course = lesson.unit.course
+
+    # Check enrollment
+    is_enrolled = Enrollment.objects.filter(
+        user=request.user, course=course, is_active=True
+    ).exists()
+    is_instructor = request.user == course.instructor
+
+    if not is_enrolled and not is_instructor:
+        return Response(
+            {'error': 'You must be enrolled in this course.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    # Check if quiz has questions
+    questions = lesson.questions.prefetch_related('choices').all()
+    total_questions = questions.count()
+
+    if total_questions == 0:
+        return Response(
+            {'error': 'This lesson has no quiz questions.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Check attempt limits
+    max_attempts = lesson.max_quiz_attempts
+    current_attempts = LessonQuizAttempt.objects.filter(
+        user=request.user,
+        lesson=lesson
+    ).count()
+
+    if max_attempts > 0 and current_attempts >= max_attempts:
+        return Response(
+            {'error': f'You have reached the maximum number of attempts ({max_attempts}).'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Validate answers format
+    answers = request.data.get('answers', {})
+    if not isinstance(answers, dict):
+        return Response(
+            {'error': 'Answers must be a dictionary of question_id: choice_id'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Process answers
+    correct_count = 0
+    results = []
+
+    for question in questions:
+        choice_id = answers.get(str(question.id))
+
+        if choice_id is None:
+            results.append({
+                'question_id': question.id,
+                'is_correct': False,
+                'selected_choice_id': None,
+                'correct_choice_id': question.choices.filter(is_correct=True).first().id if question.choices.filter(is_correct=True).exists() else None,
+            })
+            continue
+
+        try:
+            choice = question.choices.get(id=choice_id)
+        except LessonQuestionChoice.DoesNotExist:
+            results.append({
+                'question_id': question.id,
+                'is_correct': False,
+                'selected_choice_id': choice_id,
+                'correct_choice_id': question.choices.filter(is_correct=True).first().id if question.choices.filter(is_correct=True).exists() else None,
+            })
+            continue
+
+        is_correct = choice.is_correct
+        if is_correct:
+            correct_count += 1
+
+        # Save the answer
+        LessonQuestionAnswer.objects.update_or_create(
+            user=request.user,
+            question=question,
+            defaults={'selected_choice': choice}
+        )
+
+        correct_choice = question.choices.filter(is_correct=True).first()
+        results.append({
+            'question_id': question.id,
+            'is_correct': is_correct,
+            'selected_choice_id': choice.id,
+            'correct_choice_id': correct_choice.id if correct_choice else None,
+        })
+
+    # Create attempt record
+    passed = correct_count == total_questions
+    attempt = LessonQuizAttempt.objects.create(
+        user=request.user,
+        lesson=lesson,
+        attempt_number=current_attempts + 1,
+        score=correct_count,
+        total_questions=total_questions,
+        passed=passed,
+        completed_at=timezone.now()
+    )
+
+    # Calculate remaining attempts
+    attempts_remaining = None
+    if max_attempts > 0:
+        attempts_remaining = max(0, max_attempts - (current_attempts + 1))
+
+    return Response({
+        'attempt_number': attempt.attempt_number,
+        'score': correct_count,
+        'total_questions': total_questions,
+        'percentage': attempt.percentage,
+        'passed': passed,
+        'results': results,
+        'attempts_remaining': attempts_remaining,
+        'can_complete_lesson': passed,
     })

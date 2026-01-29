@@ -11,8 +11,8 @@ import {
   DialogFooter,
 } from '@/components/ui/Dialog';
 import { courseService } from '@/services/courses';
-import type { LessonQuestion } from '@/types';
-import { Plus, Trash2, Edit2, Loader2, CheckCircle, HelpCircle } from 'lucide-react';
+import type { LessonQuestion, Lesson } from '@/types';
+import { Plus, Trash2, Edit2, Loader2, CheckCircle, HelpCircle, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LessonQuestionsManagerProps {
@@ -52,27 +52,56 @@ export function LessonQuestionsManager({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Settings state
+  const [maxAttempts, setMaxAttempts] = useState<number>(0);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
   // Editing state
   const [showQuestionEditor, setShowQuestionEditor] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<EditingQuestion | null>(null);
 
   useEffect(() => {
     if (open && lessonId) {
-      loadQuestions();
+      loadData();
     }
   }, [open, lessonId]);
 
-  const loadQuestions = async () => {
+  const loadData = async () => {
     setIsLoading(true);
     setError('');
+    try {
+      const [questionsData, lessonData] = await Promise.all([
+        courseService.getLessonQuestions(lessonId),
+        courseService.getLesson(lessonId)
+      ]);
+      setQuestions(questionsData);
+      setMaxAttempts((lessonData as Lesson & { max_quiz_attempts?: number }).max_quiz_attempts || 0);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+      setError('Failed to load questions');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadQuestions = async () => {
     try {
       const data = await courseService.getLessonQuestions(lessonId);
       setQuestions(data);
     } catch (err) {
       console.error('Failed to load questions:', err);
-      setError('Failed to load questions');
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setIsSavingSettings(true);
+    try {
+      await courseService.updateLesson(lessonId, { max_quiz_attempts: maxAttempts });
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+      setError('Failed to save settings');
     } finally {
-      setIsLoading(false);
+      setIsSavingSettings(false);
     }
   };
 
@@ -214,6 +243,44 @@ export function LessonQuestionsManager({
         )}
 
         <div className="flex-1 overflow-y-auto py-4 space-y-4">
+          {/* Quiz Settings */}
+          {!showQuestionEditor && (
+            <Card>
+              <CardContent className="py-4">
+                <div className="flex items-center gap-3">
+                  <Settings className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex-1">
+                    <label className="text-sm font-medium">Maximum Attempts</label>
+                    <p className="text-xs text-muted-foreground">
+                      Set to 0 for unlimited attempts
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      value={maxAttempts}
+                      onChange={(e) => setMaxAttempts(parseInt(e.target.value) || 0)}
+                      className="w-20"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSaveSettings}
+                      disabled={isSavingSettings}
+                    >
+                      {isSavingSettings ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Save'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

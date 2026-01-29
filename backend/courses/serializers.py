@@ -16,15 +16,20 @@ class RequiredQuizSerializer(serializers.Serializer):
 class LessonSerializer(serializers.ModelSerializer):
     """Serializer for Lesson model."""
     required_quiz_info = serializers.SerializerMethodField()
+    question_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
         fields = [
             'id', 'unit', 'title', 'content', 'order',
             'video_type', 'video_id', 'required_quiz', 'required_quiz_info',
+            'max_quiz_attempts', 'question_count',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_question_count(self, obj):
+        return obj.questions.count()
 
     def get_required_quiz_info(self, obj):
         if obj.required_quiz:
@@ -41,17 +46,21 @@ class LessonCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lesson
-        fields = ['id', 'title', 'content', 'order', 'video_type', 'video_id', 'required_quiz']
+        fields = ['id', 'title', 'content', 'order', 'video_type', 'video_id', 'required_quiz', 'max_quiz_attempts']
         read_only_fields = ['id']
 
 
 class LessonListSerializer(serializers.ModelSerializer):
     """Serializer for lesson lists (includes content and video_id for editing)."""
     required_quiz_info = serializers.SerializerMethodField()
+    question_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
-        fields = ['id', 'title', 'order', 'video_type', 'video_id', 'content', 'required_quiz', 'required_quiz_info']
+        fields = [
+            'id', 'title', 'order', 'video_type', 'video_id', 'content',
+            'required_quiz', 'required_quiz_info', 'max_quiz_attempts', 'question_count'
+        ]
 
     def get_required_quiz_info(self, obj):
         if obj.required_quiz:
@@ -61,6 +70,9 @@ class LessonListSerializer(serializers.ModelSerializer):
                 'passing_score': obj.required_quiz.passing_score,
             }
         return None
+
+    def get_question_count(self, obj):
+        return obj.questions.count()
 
 
 class UnitSerializer(serializers.ModelSerializer):

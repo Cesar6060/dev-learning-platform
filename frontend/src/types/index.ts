@@ -73,6 +73,8 @@ export interface Lesson {
   video_id: string | null;
   required_quiz?: number | null;
   required_quiz_info?: RequiredQuizInfo | null;
+  max_quiz_attempts?: number | null;
+  question_count?: number;
 }
 
 export interface Enrollment {
@@ -442,6 +444,27 @@ export interface LessonQuestionsStatus {
   answered_questions: number;
   correct_answers: number;
   all_correct: boolean;
+  can_complete_lesson: boolean;
+  attempt_count: number;
+  max_attempts: number | null;
+  attempts_remaining: number | null;
+  can_attempt: boolean;
+  has_passed: boolean;
+}
+
+export interface QuizSubmissionResult {
+  attempt_number: number;
+  score: number;
+  total_questions: number;
+  percentage: number;
+  passed: boolean;
+  results: Array<{
+    question_id: number;
+    is_correct: boolean;
+    selected_choice_id: number | null;
+    correct_choice_id: number | null;
+  }>;
+  attempts_remaining: number | null;
   can_complete_lesson: boolean;
 }
 

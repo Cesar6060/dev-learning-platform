@@ -113,6 +113,10 @@ class Lesson(models.Model):
         related_name='required_for_lessons',
         help_text='Quiz that must be passed to complete this lesson'
     )
+    max_quiz_attempts = models.PositiveIntegerField(
+        default=0,
+        help_text='Maximum attempts for comprehension quiz (0 = unlimited)'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -357,3 +361,42 @@ class LessonQuestionAnswer(models.Model):
         if self.selected_choice:
             self.is_correct = self.selected_choice.is_correct
         super().save(*args, **kwargs)
+
+
+class LessonQuizAttempt(models.Model):
+    """
+    Tracks a student's attempt at a lesson's comprehension quiz.
+    Each attempt represents submitting answers for all questions.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='lesson_quiz_attempts'
+    )
+    lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.CASCADE,
+        related_name='quiz_attempts'
+    )
+    attempt_number = models.PositiveIntegerField(default=1)
+    score = models.PositiveIntegerField(
+        help_text='Number of correct answers'
+    )
+    total_questions = models.PositiveIntegerField()
+    passed = models.BooleanField(default=False)
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'courses_lessonquizattempt'
+        unique_together = ['user', 'lesson', 'attempt_number']
+        ordering = ['-attempt_number']
+
+    def __str__(self):
+        return f"{self.user.email} - {self.lesson.title} - Attempt {self.attempt_number}: {self.score}/{self.total_questions}"
+
+    @property
+    def percentage(self):
+        if self.total_questions == 0:
+            return 0
+        return round((self.score / self.total_questions) * 100)
