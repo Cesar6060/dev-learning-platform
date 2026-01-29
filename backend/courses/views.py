@@ -2228,7 +2228,8 @@ def lesson_attachments(request, lesson_id):
             'txt', 'md', 'csv',
             'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg',
             'zip', 'rar', '7z',
-            'mp3', 'wav', 'mp4', 'webm', 'mov'
+            'mp3', 'wav', 'mp4', 'webm', 'mov',
+            'py', 'js', 'html', 'css', 'json'  # code files
         }
 
         # Validate file sizes (max 10MB each) and file types

@@ -153,7 +153,7 @@ export function AttachmentUploader({
               type="file"
               multiple
               className="hidden"
-              accept=".pdf,.png,.jpg,.jpeg,.gif,.doc,.docx,.pptx,.zip,.txt,.md,.py,.js,.html,.css,.json"
+              accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.png,.jpg,.jpeg,.gif,.webp,.svg,.zip,.rar,.7z,.mp3,.wav,.mp4,.webm,.mov,.py,.js,.html,.css,.json"
               onChange={(e) => handleUpload(e.target.files)}
             />
             {isUploading ? (
