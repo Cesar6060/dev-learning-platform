@@ -17,6 +17,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('file', models.FileField(upload_to='lesson_attachments/%Y/%m/')),
                 ('filename', models.CharField(max_length=255)),
+                ('file_type', models.CharField(help_text='File type/extension', max_length=50)),
                 ('file_size', models.PositiveIntegerField(help_text='File size in bytes')),
                 ('uploaded_at', models.DateTimeField(auto_now_add=True)),
                 ('lesson', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='attachments', to='courses.lesson')),

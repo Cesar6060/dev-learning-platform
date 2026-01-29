@@ -2222,12 +2222,29 @@ def lesson_attachments(request, lesson_id):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Validate file sizes (max 10MB each)
+        # Allowed file extensions (whitelist)
+        ALLOWED_EXTENSIONS = {
+            'pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx',
+            'txt', 'md', 'csv',
+            'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg',
+            'zip', 'rar', '7z',
+            'mp3', 'wav', 'mp4', 'webm', 'mov'
+        }
+
+        # Validate file sizes (max 10MB each) and file types
         max_size = 10 * 1024 * 1024  # 10MB
         for f in files:
             if f.size > max_size:
                 return Response(
                     {'error': f'File "{f.name}" exceeds 10MB limit'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Validate file extension
+            file_ext = f.name.rsplit('.', 1)[-1].lower() if '.' in f.name else ''
+            if not file_ext or file_ext not in ALLOWED_EXTENSIONS:
+                return Response(
+                    {'error': f'File type ".{file_ext}" is not allowed. Allowed types: {", ".join(sorted(ALLOWED_EXTENSIONS))}'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
