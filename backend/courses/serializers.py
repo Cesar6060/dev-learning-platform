@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     Course, Unit, Lesson, Enrollment, LessonProgress, Announcement, CourseGradingConfig,
-    LessonQuestion, LessonQuestionChoice, LessonQuestionAnswer
+    LessonQuestion, LessonQuestionChoice, LessonQuestionAnswer, LessonQuizAttempt
 )
 from accounts.serializers import UserSerializer
 
@@ -322,15 +322,16 @@ class LessonProgressUpdateSerializer(serializers.ModelSerializer):
             # Check lesson comprehension questions first
             total_questions = lesson.questions.count()
             if total_questions > 0:
-                correct_answers = LessonQuestionAnswer.objects.filter(
+                # Check if user has a passed quiz attempt
+                has_passed = LessonQuizAttempt.objects.filter(
                     user=user,
-                    question__lesson=lesson,
-                    is_correct=True
-                ).count()
+                    lesson=lesson,
+                    passed=True
+                ).exists()
 
-                if correct_answers < total_questions:
+                if not has_passed:
                     raise serializers.ValidationError(
-                        "You must answer all comprehension questions correctly before completing this lesson."
+                        "You must pass the comprehension quiz before completing this lesson."
                     )
 
             # Also check standalone required quiz if set

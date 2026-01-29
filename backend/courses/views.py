@@ -1999,17 +1999,19 @@ def lesson_questions_status(request, lesson_id):
     can_attempt = max_attempts == 0 or attempt_count < max_attempts
     attempts_remaining = None if max_attempts == 0 else max(0, max_attempts - attempt_count)
 
+    has_passed = best_attempt is not None
+
     return Response({
         'total_questions': total_questions,
         'answered_questions': answered_count,
         'correct_answers': correct_count,
         'all_correct': all_correct,
-        'can_complete_lesson': all_correct,
+        'can_complete_lesson': has_passed or all_correct,
         'attempt_count': attempt_count,
         'max_attempts': max_attempts if max_attempts > 0 else None,
         'attempts_remaining': attempts_remaining,
         'can_attempt': can_attempt,
-        'has_passed': best_attempt is not None,
+        'has_passed': has_passed,
     })
 
 
