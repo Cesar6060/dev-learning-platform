@@ -2659,6 +2659,7 @@ def instructor_calendar(request):
             'course_code': reminder.course.code if reminder.course else None,
             'date': reminder.date.isoformat(),
             'time': reminder.time.strftime('%H:%M') if reminder.time else None,
+            'end_time': reminder.end_time.strftime('%H:%M') if reminder.end_time else None,
             'color': reminder.color,
             'reminder_id': reminder.id,
         })

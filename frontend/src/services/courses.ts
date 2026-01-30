@@ -584,6 +584,7 @@ export const courseService = {
     description?: string;
     date: string;
     time?: string;
+    end_time?: string;
     color?: string;
     course?: number;
   }): Promise<InstructorReminder> {
@@ -596,6 +597,7 @@ export const courseService = {
     description?: string;
     date?: string;
     time?: string;
+    end_time?: string;
     color?: string;
     course?: number;
   }): Promise<InstructorReminder> {

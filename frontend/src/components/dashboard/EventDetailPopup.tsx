@@ -1,4 +1,4 @@
-import { X, Pencil, Trash2, Bell, FileText, Clock, BookOpen, Calendar } from 'lucide-react';
+import { X, Pencil, Trash2, Bell, FileText, Clock, BookOpen, Calendar, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import type { CalendarEvent } from '@/types';
 
@@ -35,93 +35,119 @@ export function EventDetailPopup({
     });
   };
 
-  const getColorClass = (color: string) => {
-    switch (color) {
-      case 'green': return 'bg-green-500';
-      case 'amber': return 'bg-amber-500';
-      case 'red': return 'bg-red-500';
-      case 'purple': return 'bg-purple-500';
-      case 'blue':
-      default: return 'bg-blue-500';
-    }
+  const getColorStyles = (color: string) => {
+    const colors: Record<string, { bg: string; bgLight: string; text: string; border: string }> = {
+      blue: { bg: 'bg-blue-500', bgLight: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30' },
+      green: { bg: 'bg-green-500', bgLight: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/30' },
+      amber: { bg: 'bg-amber-500', bgLight: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30' },
+      red: { bg: 'bg-red-500', bgLight: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30' },
+      purple: { bg: 'bg-purple-500', bgLight: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/30' },
+    };
+    return colors[color] || colors.blue;
   };
 
   const isReminder = event.type === 'reminder';
+  const colorStyles = getColorStyles(event.color);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
 
       {/* Popup */}
-      <div className="relative bg-card border border-border rounded-xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
-        {/* Color bar at top */}
-        <div className={`h-2 ${getColorClass(event.color)}`} />
+      <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 fade-in duration-200 border border-border/50">
+        {/* Color accent bar */}
+        <div className={`h-1.5 ${colorStyles.bg}`} />
 
-        {/* Header */}
-        <div className="flex items-start justify-between p-4 pb-2">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${getColorClass(event.color)}/20`}>
+        {/* Close button - absolute positioned */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-muted/80 transition-colors z-10"
+        >
+          <X className="h-4 w-4 text-muted-foreground" />
+        </button>
+
+        {/* Header section */}
+        <div className="px-6 pt-5 pb-4">
+          <div className="flex items-start gap-4">
+            {/* Icon */}
+            <div className={`p-3 rounded-xl ${colorStyles.bgLight} ${colorStyles.border} border`}>
               {isReminder ? (
-                <Bell className={`h-5 w-5 text-${event.color}-400`} />
+                <Bell className={`h-6 w-6 ${colorStyles.text}`} />
               ) : (
-                <FileText className={`h-5 w-5 text-${event.color}-400`} />
+                <FileText className={`h-6 w-6 ${colorStyles.text}`} />
               )}
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                {isReminder ? 'Reminder' : 'Assignment'}
-              </p>
-              <h3 className="text-lg font-semibold">{event.title}</h3>
+
+            {/* Title & Type */}
+            <div className="flex-1 min-w-0 pr-8">
+              <div className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${colorStyles.bgLight} ${colorStyles.text} mb-1.5`}>
+                {isReminder ? 'Reminder' : event.type === 'quiz' ? 'Quiz' : 'Assignment'}
+              </div>
+              <h3 className="text-xl font-semibold text-foreground leading-tight truncate">
+                {event.title}
+              </h3>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded hover:bg-muted transition-colors"
-          >
-            <X className="h-5 w-5 text-muted-foreground" />
-          </button>
         </div>
 
-        {/* Details */}
-        <div className="px-4 pb-4 space-y-3">
-          {/* Date & Time */}
-          <div className="flex items-center gap-3 text-sm">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span>{formatDate(event.date)}</span>
+        {/* Details section */}
+        <div className="px-6 pb-5 space-y-3">
+          {/* Date */}
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">{formatDate(event.date)}</p>
+            </div>
           </div>
 
+          {/* Time */}
           {event.time && (
-            <div className="flex items-center gap-3 text-sm">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span>{formatTime(event.time)}</span>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {formatTime(event.time)}
+                  {event.end_time && (
+                    <span className="text-muted-foreground"> — {formatTime(event.end_time)}</span>
+                  )}
+                </p>
+              </div>
             </div>
           )}
 
           {/* Course */}
           {event.course_code && (
-            <div className="flex items-center gap-3 text-sm">
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-              <span>{event.course_code}</span>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center">
+                <BookOpen className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">{event.course_code}</p>
+              </div>
             </div>
           )}
 
           {/* Description */}
           {event.description && (
-            <div className="pt-2 border-t border-border">
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+            <div className="mt-4 pt-4 border-t border-border/50">
+              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
                 {event.description}
               </p>
             </div>
           )}
         </div>
 
-        {/* Actions */}
+        {/* Actions footer */}
         {isReminder && (
-          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted/30">
+          <div className="flex items-center justify-between px-6 py-4 border-t border-border/50 bg-muted/20">
             <Button
               variant="ghost"
               size="sm"
@@ -129,30 +155,33 @@ export function EventDetailPopup({
               disabled={isDeleting}
               className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
             >
-              <Trash2 className="h-4 w-4 mr-1.5" />
+              <Trash2 className="h-4 w-4 mr-2" />
               {isDeleting ? 'Deleting...' : 'Delete'}
             </Button>
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               onClick={onEdit}
               disabled={isDeleting}
+              className={`${colorStyles.bg} hover:opacity-90`}
             >
-              <Pencil className="h-4 w-4 mr-1.5" />
-              Edit
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit Reminder
             </Button>
           </div>
         )}
 
-        {/* Assignment link */}
+        {/* Assignment/Quiz link */}
         {!isReminder && event.url && (
-          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted/30">
+          <div className="flex items-center justify-end px-6 py-4 border-t border-border/50 bg-muted/20">
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               onClick={() => window.location.href = event.url!}
+              className={`${colorStyles.bg} hover:opacity-90`}
             >
-              View Submissions
+              <ExternalLink className="h-4 w-4 mr-2" />
+              View {event.type === 'quiz' ? 'Quiz' : 'Submissions'}
             </Button>
           </div>
         )}

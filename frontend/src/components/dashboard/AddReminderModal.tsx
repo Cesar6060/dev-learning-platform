@@ -45,6 +45,9 @@ export function AddReminderModal({
   const [hour, setHour] = useState<number | null>(null);
   const [minute, setMinute] = useState('00');
   const [ampm, setAmpm] = useState<'AM' | 'PM'>('AM');
+  const [endHour, setEndHour] = useState<number | null>(null);
+  const [endMinute, setEndMinute] = useState('00');
+  const [endAmpm, setEndAmpm] = useState<'AM' | 'PM'>('AM');
   const [color, setColor] = useState('blue');
   const [courseId, setCourseId] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,7 +86,7 @@ export function AddReminderModal({
         setMonth(m - 1);
         setDay(d);
 
-        // Parse time if present
+        // Parse start time if present
         if (editingReminder.time) {
           const [h24, min] = editingReminder.time.split(':').map(Number);
           let h12 = h24 % 12;
@@ -96,6 +99,20 @@ export function AddReminderModal({
           setMinute('00');
           setAmpm('AM');
         }
+
+        // Parse end time if present
+        if (editingReminder.end_time) {
+          const [h24, min] = editingReminder.end_time.split(':').map(Number);
+          let h12 = h24 % 12;
+          if (h12 === 0) h12 = 12;
+          setEndHour(h12);
+          setEndMinute(String(min).padStart(2, '0'));
+          setEndAmpm(h24 >= 12 ? 'PM' : 'AM');
+        } else {
+          setEndHour(null);
+          setEndMinute('00');
+          setEndAmpm('AM');
+        }
       } else {
         // Reset for new reminder
         setTitle('');
@@ -103,6 +120,9 @@ export function AddReminderModal({
         setHour(null);
         setMinute('00');
         setAmpm('AM');
+        setEndHour(null);
+        setEndMinute('00');
+        setEndAmpm('AM');
         setColor('blue');
         setCourseId('');
 
@@ -137,13 +157,33 @@ export function AddReminderModal({
     // Format date as YYYY-MM-DD
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-    // Format time as HH:MM (24-hour) if hour is selected
+    // Format start time as HH:MM (24-hour) if hour is selected
     let timeStr: string | undefined;
+    let startMinutes = 0;
     if (hour !== null) {
       let hour24 = hour;
       if (ampm === 'PM' && hour !== 12) hour24 = hour + 12;
       if (ampm === 'AM' && hour === 12) hour24 = 0;
       timeStr = `${String(hour24).padStart(2, '0')}:${minute}`;
+      startMinutes = hour24 * 60 + parseInt(minute);
+    }
+
+    // Format end time as HH:MM (24-hour) if end hour is selected
+    let endTimeStr: string | undefined;
+    if (endHour !== null && hour !== null) {
+      let hour24 = endHour;
+      if (endAmpm === 'PM' && endHour !== 12) hour24 = endHour + 12;
+      if (endAmpm === 'AM' && endHour === 12) hour24 = 0;
+      const endMinutes = hour24 * 60 + parseInt(endMinute);
+
+      // Validate end time is after start time
+      if (endMinutes <= startMinutes) {
+        setError('End time must be after start time');
+        setIsSubmitting(false);
+        return;
+      }
+
+      endTimeStr = `${String(hour24).padStart(2, '0')}:${endMinute}`;
     }
 
     try {
@@ -152,6 +192,7 @@ export function AddReminderModal({
         description: description.trim(),
         date: dateStr,
         time: timeStr,
+        end_time: endTimeStr,
         color,
         course: courseId ? parseInt(courseId) : undefined,
       };
@@ -323,10 +364,10 @@ export function AddReminderModal({
             </div>
           </div>
 
-          {/* Time Dropdowns */}
+          {/* Start Time Dropdowns */}
           <div>
             <label className="block text-sm font-medium mb-1.5">
-              Time <span className="text-muted-foreground font-normal">(optional)</span>
+              Start Time <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
             <div className="grid grid-cols-3 gap-2">
               <div className="relative">
@@ -370,6 +411,56 @@ export function AddReminderModal({
               </div>
             </div>
           </div>
+
+          {/* End Time Dropdowns - only show if start time is set */}
+          {hour !== null && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5">
+                End Time <span className="text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="relative">
+                  <select
+                    value={endHour ?? ''}
+                    onChange={(e) => setEndHour(e.target.value ? parseInt(e.target.value) : null)}
+                    className={selectClass + " w-full pr-8"}
+                    disabled={isSubmitting}
+                  >
+                    <option value="">Hour</option>
+                    {HOURS.map((h) => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                </div>
+                <div className="relative">
+                  <select
+                    value={endMinute}
+                    onChange={(e) => setEndMinute(e.target.value)}
+                    className={selectClass + " w-full pr-8"}
+                    disabled={isSubmitting || endHour === null}
+                  >
+                    {MINUTES.map((m) => (
+                      <option key={m} value={m}>:{m}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                </div>
+                <div className="relative">
+                  <select
+                    value={endAmpm}
+                    onChange={(e) => setEndAmpm(e.target.value as 'AM' | 'PM')}
+                    className={selectClass + " w-full pr-8"}
+                    disabled={isSubmitting || endHour === null}
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Course */}
           {courses.length > 0 && (

@@ -463,7 +463,8 @@ class InstructorReminder(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     date = models.DateField()
-    time = models.TimeField(null=True, blank=True)
+    time = models.TimeField(null=True, blank=True, help_text='Start time')
+    end_time = models.TimeField(null=True, blank=True, help_text='End time (optional)')
     color = models.CharField(
         max_length=20,
         default='blue',

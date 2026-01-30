@@ -510,6 +510,7 @@ export interface InstructorReminder {
   description: string;
   date: string;
   time: string | null;
+  end_time: string | null;
   color: 'blue' | 'green' | 'amber' | 'red' | 'purple';
   created_at: string;
   updated_at: string;
@@ -523,6 +524,7 @@ export interface CalendarEvent {
   course_code: string | null;
   date: string;
   time: string | null;
+  end_time?: string | null;
   color: string;
   url?: string;
   reminder_id?: number;

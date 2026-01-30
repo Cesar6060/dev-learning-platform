@@ -631,7 +631,7 @@ class InstructorReminderSerializer(serializers.ModelSerializer):
         model = InstructorReminder
         fields = [
             "id", "course", "course_code", "course_title", "title",
-            "description", "date", "time", "color", "created_at", "updated_at"
+            "description", "date", "time", "end_time", "color", "created_at", "updated_at"
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
@@ -647,7 +647,7 @@ class InstructorReminderCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = InstructorReminder
-        fields = ["id", "course", "title", "description", "date", "time", "color"]
+        fields = ["id", "course", "title", "description", "date", "time", "end_time", "color"]
         read_only_fields = ["id"]
 
     def validate_course(self, value):
@@ -657,4 +657,20 @@ class InstructorReminderCreateSerializer(serializers.ModelSerializer):
             if request and value.instructor != request.user:
                 raise serializers.ValidationError("You can only add reminders to your own courses.")
         return value
+
+    def validate(self, data):
+        """Validate that end_time is after time if both are provided."""
+        time = data.get('time') or (self.instance.time if self.instance else None)
+        end_time = data.get('end_time')
+
+        if time and end_time and end_time <= time:
+            raise serializers.ValidationError({
+                'end_time': 'End time must be after start time.'
+            })
+
+        # If no start time, clear end time
+        if not time and end_time:
+            data['end_time'] = None
+
+        return data
 
