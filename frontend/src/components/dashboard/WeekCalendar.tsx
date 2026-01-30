@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, FileText, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { courseService } from '@/services/courses';
+import { EventDetailPopup } from './EventDetailPopup';
 import type { CalendarEvent, InstructorReminder } from '@/types';
 
 interface WeekCalendarProps {
@@ -13,6 +14,8 @@ export function WeekCalendar({ onAddReminder, onEditReminder }: WeekCalendarProp
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Get the start of the week (Sunday)
   const getWeekStart = (date: Date) => {
@@ -110,12 +113,32 @@ export function WeekCalendar({ onAddReminder, onEditReminder }: WeekCalendarProp
     return date.toDateString() === today.toDateString();
   };
 
-  const handleReminderClick = async (reminderId: number) => {
+  const handleEventClick = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+  };
+
+  const handleEditFromPopup = async () => {
+    if (!selectedEvent?.reminder_id) return;
     try {
-      const reminder = await courseService.getReminder(reminderId);
+      const reminder = await courseService.getReminder(selectedEvent.reminder_id);
+      setSelectedEvent(null);
       onEditReminder(reminder);
     } catch (err) {
       console.error('Failed to load reminder:', err);
+    }
+  };
+
+  const handleDeleteFromPopup = async () => {
+    if (!selectedEvent?.reminder_id) return;
+    setIsDeleting(true);
+    try {
+      await courseService.deleteReminder(selectedEvent.reminder_id);
+      setSelectedEvent(null);
+      loadEvents(); // Refresh calendar
+    } catch (err) {
+      console.error('Failed to delete reminder:', err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -214,11 +237,9 @@ export function WeekCalendar({ onAddReminder, onEditReminder }: WeekCalendarProp
                 {(expandedDays.has(dateStr) ? dayEvents : dayEvents.slice(0, 4)).map((event) => (
                   <div
                     key={event.id}
-                    onClick={() => event.reminder_id && handleReminderClick(event.reminder_id)}
-                    className={`text-[10px] px-1.5 py-1 rounded border ${
-                      event.reminder_id ? 'cursor-pointer hover:opacity-80' : ''
-                    } ${getEventColorClass(event.color)}`}
-                    title={`${event.title}${event.time ? ` at ${formatTime(event.time)}` : ''}${event.reminder_id ? ' (click to edit)' : ''}`}
+                    onClick={() => handleEventClick(event)}
+                    className={`text-[10px] px-1.5 py-1 rounded border cursor-pointer hover:opacity-80 ${getEventColorClass(event.color)}`}
+                    title={`${event.title}${event.time ? ` at ${formatTime(event.time)}` : ''}`}
                   >
                     <div className="flex items-center gap-1">
                       {getEventIcon(event.type)}
@@ -248,6 +269,17 @@ export function WeekCalendar({ onAddReminder, onEditReminder }: WeekCalendarProp
         <div className="absolute inset-0 bg-background/50 flex items-center justify-center rounded-xl">
           <div className="animate-spin h-6 w-6 border-2 border-[#22c55e] border-t-transparent rounded-full" />
         </div>
+      )}
+
+      {/* Event Detail Popup */}
+      {selectedEvent && (
+        <EventDetailPopup
+          event={selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          onEdit={handleEditFromPopup}
+          onDelete={handleDeleteFromPopup}
+          isDeleting={isDeleting}
+        />
       )}
     </div>
   );
