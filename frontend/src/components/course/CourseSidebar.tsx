@@ -81,7 +81,7 @@ export function CourseSidebar({
 
   if (isCollapsed) {
     return (
-      <div className="w-12 bg-zinc-950 border-r border-zinc-800 flex flex-col items-center py-4">
+      <div className="w-12 bg-zinc-950 border-r border-zinc-800 flex flex-col items-center py-4 relative z-10">
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
@@ -109,7 +109,7 @@ export function CourseSidebar({
   }
 
   return (
-    <div className="w-[380px] bg-zinc-950 border-r border-zinc-800 flex flex-col h-full">
+    <div className="w-[380px] bg-zinc-950 border-r border-zinc-800 flex flex-col h-full relative z-10">
       {/* Header */}
       <div className="p-4 border-b border-zinc-800">
         <div className="flex items-center justify-between mb-3">
