@@ -2544,6 +2544,9 @@ class InstructorReminderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # Only instructors can access reminders
+        if not self.request.user.is_instructor:
+            return InstructorReminder.objects.none()
         return InstructorReminder.objects.filter(instructor=self.request.user)
 
     def get_serializer_class(self):
@@ -2557,6 +2560,10 @@ class InstructorReminderViewSet(viewsets.ModelViewSet):
         return context
 
     def perform_create(self, serializer):
+        # Only instructors can create reminders
+        if not self.request.user.is_instructor:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only instructors can create reminders")
         serializer.save(instructor=self.request.user)
 
 
@@ -2588,12 +2595,24 @@ def instructor_calendar(request):
     end_date_str = request.query_params.get('end_date')
 
     if start_date_str:
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response(
+                {'error': 'Invalid start_date format. Use YYYY-MM-DD'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     else:
         start_date = today
 
     if end_date_str:
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response(
+                {'error': 'Invalid end_date format. Use YYYY-MM-DD'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     else:
         end_date = start_date + timedelta(days=6)
 
