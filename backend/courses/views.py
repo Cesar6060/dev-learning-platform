@@ -419,7 +419,7 @@ class CourseProgressView(generics.RetrieveAPIView):
             completed=True
         ).count()
 
-        progress_percentage = round((completed_lessons / total_lessons) * 100, 1)
+        progress_percentage = round((completed_lessons / total_lessons) * 100, 1) if total_lessons > 0 else 0
 
         return Response({
             'total_lessons': total_lessons,
