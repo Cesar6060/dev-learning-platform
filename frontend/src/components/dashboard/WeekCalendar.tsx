@@ -85,9 +85,24 @@ export function WeekCalendar({ onAddReminder, onEditReminder }: WeekCalendarProp
   const formatTime = (time: string | null) => {
     if (!time) return null;
     const [hours, minutes] = time.split(':').map(Number);
-    const ampm = hours >= 12 ? 'p' : 'a';
+    const ampm = hours >= 12 ? 'PM' : 'AM';
     const hour12 = hours % 12 || 12;
-    return `${hour12}${minutes > 0 ? `:${String(minutes).padStart(2, '0')}` : ''}${ampm}`;
+    return `${hour12}:${String(minutes).padStart(2, '0')} ${ampm}`;
+  };
+
+  // Track which days are expanded
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+
+  const toggleDayExpanded = (dateStr: string) => {
+    setExpandedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(dateStr)) {
+        next.delete(dateStr);
+      } else {
+        next.add(dateStr);
+      }
+      return next;
+    });
   };
 
   const isToday = (date: Date) => {
@@ -196,19 +211,19 @@ export function WeekCalendar({ onAddReminder, onEditReminder }: WeekCalendarProp
 
               {/* Events */}
               <div className="space-y-1">
-                {dayEvents.slice(0, 4).map((event) => (
+                {(expandedDays.has(dateStr) ? dayEvents : dayEvents.slice(0, 4)).map((event) => (
                   <div
                     key={event.id}
                     onClick={() => event.reminder_id && handleReminderClick(event.reminder_id)}
                     className={`text-[10px] px-1.5 py-1 rounded border ${
                       event.reminder_id ? 'cursor-pointer hover:opacity-80' : ''
                     } ${getEventColorClass(event.color)}`}
-                    title={`${event.title}${event.time ? ` at ${event.time}` : ''}${event.reminder_id ? ' (click to edit)' : ''}`}
+                    title={`${event.title}${event.time ? ` at ${formatTime(event.time)}` : ''}${event.reminder_id ? ' (click to edit)' : ''}`}
                   >
                     <div className="flex items-center gap-1">
                       {getEventIcon(event.type)}
                       {event.time && (
-                        <span className="font-medium opacity-75">{formatTime(event.time)}</span>
+                        <span className="font-medium opacity-75 whitespace-nowrap">{formatTime(event.time)}</span>
                       )}
                       <span className="truncate flex-1">{event.title}</span>
                     </div>
@@ -216,10 +231,10 @@ export function WeekCalendar({ onAddReminder, onEditReminder }: WeekCalendarProp
                 ))}
                 {dayEvents.length > 4 && (
                   <button
+                    onClick={() => toggleDayExpanded(dateStr)}
                     className="w-full text-[10px] text-muted-foreground hover:text-foreground py-0.5 rounded hover:bg-muted/50 transition-colors"
-                    title={dayEvents.slice(4).map(e => `${e.time ? formatTime(e.time) + ' ' : ''}${e.title}`).join('\n')}
                   >
-                    +{dayEvents.length - 4} more
+                    {expandedDays.has(dateStr) ? 'Show less' : `+${dayEvents.length - 4} more`}
                   </button>
                 )}
               </div>
