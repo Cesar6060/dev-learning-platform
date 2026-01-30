@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, CheckCircle, Circle, PlayCircle, FileText, FileQuestion } from 'lucide-react';
+import { ChevronRight, CheckCircle, Circle, PlayCircle, FileText, FileQuestion } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { GradientText } from '@/components/ui/animated';
 
 interface RequiredQuizInfo {
   id: number;
@@ -79,22 +81,26 @@ export function CourseSidebar({
 
   if (isCollapsed) {
     return (
-      <div className="w-12 bg-card border-r flex flex-col items-center py-4">
-        <button
+      <div className="w-12 bg-background/80 dark:bg-zinc-900/90 border-r border-purple-500/20 flex flex-col items-center py-4">
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
           onClick={onToggleCollapse}
-          className="p-2 hover:bg-accent rounded-md mb-4"
+          className="p-2 hover:bg-purple-500/20 rounded-md mb-4 transition-colors"
           title="Expand sidebar"
         >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+          <ChevronRight className="h-4 w-4 text-purple-400" />
+        </motion.button>
         <div className="flex-1 flex flex-col items-center">
-          <div className="w-2 bg-muted rounded-full h-32 relative">
-            <div
-              className="absolute bottom-0 w-full bg-primary rounded-full transition-all"
-              style={{ height: `${progressPercentage}%` }}
+          <div className="w-2 bg-muted rounded-full h-32 relative overflow-hidden">
+            <motion.div
+              className="absolute bottom-0 w-full bg-gradient-to-t from-purple-500 to-pink-500 rounded-full"
+              initial={{ height: 0 }}
+              animate={{ height: `${progressPercentage}%` }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
             />
           </div>
-          <span className="text-xs text-muted-foreground mt-2 -rotate-90 whitespace-nowrap origin-center">
+          <span className="text-xs text-purple-400 mt-2 -rotate-90 whitespace-nowrap origin-center font-medium">
             {Math.round(progressPercentage)}%
           </span>
         </div>
@@ -103,81 +109,104 @@ export function CourseSidebar({
   }
 
   return (
-    <div className="w-[380px] bg-card border-r flex flex-col h-full">
+    <div className="w-[380px] bg-background/80 dark:bg-zinc-900/90 border-r border-purple-500/20 flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b">
+      <div className="p-4 border-b border-purple-500/20">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-sm">Course Content</h2>
-          <button
+          <h2 className="font-semibold text-sm">
+            <GradientText gradient="gaming" animate={false}>Course Content</GradientText>
+          </h2>
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
             onClick={onToggleCollapse}
-            className="p-1 hover:bg-accent rounded"
+            className="p-1 hover:bg-purple-500/20 rounded transition-colors"
             title="Collapse sidebar"
           >
-            <ChevronRight className="h-4 w-4 rotate-180" />
-          </button>
+            <ChevronRight className="h-4 w-4 rotate-180 text-purple-400" />
+          </motion.button>
         </div>
 
         {/* Progress bar */}
         <div className="space-y-1">
           <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${progressPercentage}%` }}
+            <motion.div
+              className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+              initial={{ width: 0 }}
+              animate={{ width: `${progressPercentage}%` }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            {completedCount} of {totalCount} complete ({Math.round(progressPercentage)}%)
+            {completedCount} of {totalCount} complete (<span className="text-purple-400 font-medium">{Math.round(progressPercentage)}%</span>)
           </p>
         </div>
       </div>
 
       {/* Units list */}
       <div className="flex-1 overflow-y-auto">
-        {units.map((unit) => {
+        {units.map((unit, unitIndex) => {
           const isExpanded = expandedUnits.includes(unit.id);
           const { completed, total } = getUnitProgress(unit);
+          const isUnitComplete = completed === total && total > 0;
 
           return (
-            <div key={unit.id} className="border-b">
+            <motion.div
+              key={unit.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: unitIndex * 0.05 }}
+              className="border-b border-purple-500/10"
+            >
               {/* Unit header */}
               <button
                 onClick={() => toggleUnit(unit.id)}
-                className="w-full px-4 py-3 flex items-center justify-between hover:bg-accent/50 transition-colors"
+                className="w-full px-4 py-3 flex items-center justify-between hover:bg-purple-500/10 transition-colors"
               >
                 <div className="flex items-center gap-2 text-left">
-                  {isExpanded ? (
-                    <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                  )}
+                  <motion.div
+                    animate={{ rotate: isExpanded ? 90 : 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ChevronRight className="h-4 w-4 flex-shrink-0 text-purple-400" />
+                  </motion.div>
                   <div>
                     <p className="font-medium text-sm">{unit.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {completed}/{total} lessons
+                      <span className={isUnitComplete ? 'text-green-400' : 'text-purple-400'}>{completed}</span>/{total} lessons
                     </p>
                   </div>
                 </div>
-                {completed === total && total > 0 && (
+                {isUnitComplete && (
                   <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
                 )}
               </button>
 
               {/* Lessons list */}
               {isExpanded && (
-                <div className="bg-muted/30">
-                  {unit.lessons.map((lesson) => {
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="bg-black/20 dark:bg-black/30"
+                >
+                  {unit.lessons.map((lesson, lessonIndex) => {
                     const isActive = lesson.id === currentLessonId;
                     const hasVideo = lesson.video_type !== 'none' && lesson.video_id;
 
                     return (
-                      <button
+                      <motion.button
                         key={lesson.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.2, delay: lessonIndex * 0.03 }}
                         onClick={() => onLessonSelect(lesson.id)}
                         className={cn(
-                          "w-full px-4 py-2 flex items-center gap-3 text-left transition-colors",
+                          "w-full px-4 py-2 flex items-center gap-3 text-left transition-all",
                           isActive
-                            ? "bg-primary/10 border-l-2 border-primary"
-                            : "hover:bg-accent/50 border-l-2 border-transparent"
+                            ? "bg-gradient-to-r from-purple-500/20 to-pink-500/10 border-l-2 border-purple-500"
+                            : "hover:bg-purple-500/10 border-l-2 border-transparent"
                         )}
                       >
                         {/* Completion icon */}
@@ -185,16 +214,16 @@ export function CourseSidebar({
                           {lesson.is_completed ? (
                             <CheckCircle className="h-4 w-4 text-green-500" />
                           ) : (
-                            <Circle className="h-4 w-4 text-muted-foreground" />
+                            <Circle className={cn("h-4 w-4", isActive ? "text-purple-400" : "text-muted-foreground")} />
                           )}
                         </div>
 
                         {/* Content type icon */}
                         <div className="flex-shrink-0">
                           {hasVideo ? (
-                            <PlayCircle className="h-4 w-4 text-muted-foreground" />
+                            <PlayCircle className={cn("h-4 w-4", isActive ? "text-pink-400" : "text-muted-foreground")} />
                           ) : (
-                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <FileText className={cn("h-4 w-4", isActive ? "text-pink-400" : "text-muted-foreground")} />
                           )}
                         </div>
 
@@ -202,8 +231,8 @@ export function CourseSidebar({
                         <span
                           className={cn(
                             "text-sm flex-1 truncate",
-                            isActive ? "font-medium" : "",
-                            lesson.is_completed ? "text-muted-foreground" : ""
+                            isActive ? "font-medium text-foreground" : "",
+                            lesson.is_completed && !isActive ? "text-muted-foreground" : ""
                           )}
                         >
                           {lesson.title}
@@ -215,12 +244,12 @@ export function CourseSidebar({
                             <FileQuestion className="h-4 w-4 text-amber-500 flex-shrink-0" />
                           </span>
                         )}
-                      </button>
+                      </motion.button>
                     );
                   })}
-                </div>
+                </motion.div>
               )}
-            </div>
+            </motion.div>
           );
         })}
       </div>

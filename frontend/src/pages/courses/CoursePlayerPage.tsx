@@ -10,6 +10,8 @@ import { LessonQuizSection } from '@/components/lesson/LessonQuizSection';
 import { LessonAttachmentsList } from '@/components/lesson/LessonAttachmentsList';
 import { courseService } from '@/services/courses';
 import { useAuth } from '@/contexts/AuthContext';
+import { GradientText, BackgroundGrid } from '@/components/ui/animated';
+import { motion } from 'framer-motion';
 import type { LessonProgress, LessonQuestionsStatus, LessonAttachment, LessonSection } from '@/types';
 import {
   Loader2, ChevronLeft, ChevronRight, CheckCircle, Circle, FileQuestion
@@ -543,24 +545,33 @@ export function CoursePlayerPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background animate-in fade-in duration-300">
+    <div className="h-screen flex flex-col bg-background animate-in fade-in duration-300 relative">
+      {/* Background - subtle for learning mode */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-30" style={{ zIndex: 0 }}>
+        <BackgroundGrid />
+      </div>
+
       {/* Learning Mode Header */}
-      <div className="h-14 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 flex items-center px-4 gap-4">
+      <div className="h-14 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 flex items-center px-4 gap-4 relative z-10">
         {/* Exit Learning Mode */}
         <Link to={`/courses/${code}`}>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Exit</span>
-          </Button>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 border-purple-500/50 text-purple-400 hover:bg-purple-500 hover:text-white transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Exit</span>
+            </Button>
+          </motion.div>
         </Link>
 
         {/* Course Title */}
         <div className="flex-1 min-w-0 text-center">
-          <h1 className="font-semibold truncate text-sm sm:text-base">{course.title}</h1>
+          <h1 className="font-semibold truncate text-sm sm:text-base">
+            <GradientText gradient="gaming" animate={false}>{course.title}</GradientText>
+          </h1>
         </div>
 
         {/* Progress */}
@@ -570,12 +581,14 @@ export function CoursePlayerPage() {
               {completedCount}/{totalCount}
             </span>
             <div className="w-20 sm:w-28 h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all duration-300"
-                style={{ width: `${progressPercentage}%` }}
+              <motion.div
+                className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+                initial={{ width: 0 }}
+                animate={{ width: `${progressPercentage}%` }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
               />
             </div>
-            <span className="text-xs font-medium text-primary">{Math.round(progressPercentage)}%</span>
+            <span className="text-xs font-medium text-purple-400">{Math.round(progressPercentage)}%</span>
           </div>
         </div>
       </div>
@@ -606,8 +619,15 @@ export function CoursePlayerPage() {
               <div className="flex-1 overflow-y-auto">
                 <div className="max-w-4xl mx-auto p-6">
                   {/* Lesson header */}
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-bold mb-2">{currentLesson.title}</h2>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="mb-6"
+                  >
+                    <h2 className="text-2xl font-bold mb-2">
+                      <GradientText gradient="gaming" animate={false}>{currentLesson.title}</GradientText>
+                    </h2>
 
                     {/* Section title (only show if section has a title) */}
                     {hasSections && totalSections > 1 && currentSection?.title && (
@@ -677,32 +697,35 @@ export function CoursePlayerPage() {
                     {/* Only show Mark Complete button if there's no quiz requirement and on last section */}
                     {(!hasSections || isLastSection) && !progress?.required_quiz_info && (!questionsStatus || questionsStatus.total_questions === 0) && (
                       <div className="flex items-center gap-3">
-                        <Button
-                          variant={progress?.completed ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={handleMarkComplete}
-                          disabled={isMarkingComplete}
-                        >
-                          {isMarkingComplete ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : progress?.completed ? (
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                          ) : (
-                            <Circle className="h-4 w-4 mr-2" />
-                          )}
-                          {progress?.completed ? 'Completed' : 'Mark Complete'}
-                        </Button>
+                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                          <Button
+                            variant={progress?.completed ? 'gradient' : 'outline'}
+                            size="sm"
+                            onClick={handleMarkComplete}
+                            disabled={isMarkingComplete}
+                            className={!progress?.completed ? 'border-purple-500/50 hover:bg-purple-500/10 hover:text-purple-400' : ''}
+                          >
+                            {isMarkingComplete ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : progress?.completed ? (
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                            ) : (
+                              <Circle className="h-4 w-4 mr-2" />
+                            )}
+                            {progress?.completed ? 'Completed' : 'Mark Complete'}
+                          </Button>
+                        </motion.div>
                       </div>
                     )}
 
                     {/* Show completion status when there IS a quiz requirement */}
                     {(progress?.required_quiz_info || (questionsStatus && questionsStatus.total_questions > 0)) && progress?.completed && (
-                      <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                      <div className="flex items-center gap-2 text-green-500">
                         <CheckCircle className="h-5 w-5" />
                         <span className="font-medium">Lesson Completed</span>
                       </div>
                     )}
-                  </div>
+                  </motion.div>
 
                   {/* Section/Lesson content */}
                   {renderSectionContent()}
@@ -715,23 +738,25 @@ export function CoursePlayerPage() {
               </div>
 
               {/* Navigation footer */}
-              <div className="h-14 border-t bg-card flex items-center justify-between px-4 sm:px-6">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    if (hasSections && currentSectionIndex > 0) {
-                      handleSectionChange(currentSectionIndex - 1);
-                    } else if (previousLesson) {
-                      handleLessonSelect(previousLesson.id);
-                    }
-                  }}
-                  disabled={!previousLesson && currentSectionIndex === 0}
-                  className="gap-1"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="hidden sm:inline">Previous</span>
-                </Button>
+              <div className="h-14 border-t border-purple-500/20 bg-card/95 backdrop-blur flex items-center justify-between px-4 sm:px-6">
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (hasSections && currentSectionIndex > 0) {
+                        handleSectionChange(currentSectionIndex - 1);
+                      } else if (previousLesson) {
+                        handleLessonSelect(previousLesson.id);
+                      }
+                    }}
+                    disabled={!previousLesson && currentSectionIndex === 0}
+                    className="gap-1 hover:text-purple-400 hover:bg-purple-500/10 transition-colors"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline">Previous</span>
+                  </Button>
+                </motion.div>
 
                 {/* Section indicators */}
                 <div className="flex items-center gap-2">
@@ -740,61 +765,67 @@ export function CoursePlayerPage() {
                       <div className="flex items-center gap-1.5">
                         {/* Content section dots */}
                         {contentSections.map((_, i) => (
-                          <button
+                          <motion.button
                             key={i}
+                            whileHover={{ scale: 1.2 }}
+                            whileTap={{ scale: 0.9 }}
                             onClick={() => handleSectionChange(i)}
-                            className={`w-2 h-2 rounded-full transition-all ${
+                            className={`h-2 rounded-full transition-all ${
                               i === currentSectionIndex
-                                ? 'bg-primary w-3'
+                                ? 'w-4 bg-gradient-to-r from-purple-500 to-pink-500'
                                 : i < currentSectionIndex
-                                  ? 'bg-primary/50'
-                                  : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                                  ? 'w-2 bg-purple-500/60'
+                                  : 'w-2 bg-muted-foreground/30 hover:bg-purple-400/50'
                             }`}
                             title={`Section ${i + 1}`}
                           />
                         ))}
                         {/* Quiz section indicator */}
                         {hasQuiz && (
-                          <button
+                          <motion.button
+                            whileHover={{ scale: 1.2 }}
+                            whileTap={{ scale: 0.9 }}
                             onClick={() => handleSectionChange(totalSections - 1)}
-                            className={`w-2 h-2 rounded-sm transition-all ${
+                            className={`h-2 rounded-sm transition-all ${
                               isOnQuizSection
-                                ? 'bg-amber-500 w-3'
+                                ? 'w-4 bg-gradient-to-r from-amber-500 to-orange-500'
                                 : currentSectionIndex < totalSections - 1
-                                  ? 'bg-amber-500/30 hover:bg-amber-500/50'
-                                  : 'bg-amber-500/50'
+                                  ? 'w-2 bg-amber-500/30 hover:bg-amber-400/50'
+                                  : 'w-2 bg-amber-500/50'
                             }`}
                             title="Comprehension Check"
                           />
                         )}
                       </div>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-purple-400 font-medium">
                         {currentSectionIndex + 1}/{totalSections}
                       </span>
                     </>
                   ) : (
                     <span className="text-xs text-muted-foreground hidden sm:block">
-                      ← → to navigate
+                      <span className="text-purple-400">←</span> <span className="text-pink-400">→</span> to navigate
                     </span>
                   )}
                 </div>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    if (hasSections && currentSectionIndex < totalSections - 1) {
-                      handleSectionChange(currentSectionIndex + 1);
-                    } else if (nextLesson) {
-                      handleLessonSelect(nextLesson.id);
-                    }
-                  }}
-                  disabled={!nextLesson && isLastSection}
-                  className="gap-1"
-                >
-                  <span className="hidden sm:inline">Next</span>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (hasSections && currentSectionIndex < totalSections - 1) {
+                        handleSectionChange(currentSectionIndex + 1);
+                      } else if (nextLesson) {
+                        handleLessonSelect(nextLesson.id);
+                      }
+                    }}
+                    disabled={!nextLesson && isLastSection}
+                    className="gap-1 hover:text-pink-400 hover:bg-pink-500/10 transition-colors"
+                  >
+                    <span className="hidden sm:inline">Next</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </motion.div>
               </div>
             </>
           ) : (
