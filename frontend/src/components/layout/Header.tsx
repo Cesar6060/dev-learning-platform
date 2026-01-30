@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { courseService } from '@/services/courses';
+import { GradientText } from '@/components/ui/animated';
+import { motion } from 'framer-motion';
 import type { Enrollment } from '@/types';
 
 export function Header() {
@@ -88,9 +90,17 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-14 items-center px-4">
         {/* Logo */}
-        <Link to="/" className="flex items-center space-x-2">
-          <Gamepad2 className="h-6 w-6" />
-          <span className="font-bold hidden sm:inline">GameDev</span>
+        <Link to="/" className="flex items-center space-x-2 group">
+          <motion.div
+            whileHover={{ rotate: [0, -10, 10, 0] }}
+            transition={{ duration: 0.5 }}
+            className="p-1.5 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500"
+          >
+            <Gamepad2 className="h-5 w-5 text-white" />
+          </motion.div>
+          <span className="font-bold hidden sm:inline">
+            <GradientText gradient="gaming" animate={false}>GameDev</GradientText>
+          </span>
         </Link>
 
         {/* Main Navigation */}

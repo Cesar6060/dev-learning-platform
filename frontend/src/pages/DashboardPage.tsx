@@ -7,6 +7,8 @@ import type { Enrollment, EnhancedDashboard } from '@/types';
 import { Plus, Play, BookOpen, Users, CheckCircle2 } from 'lucide-react';
 import { EnrollmentModal } from '@/components/course/EnrollmentModal';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { GradientText, SpotlightCard, AnimatedCounter } from '@/components/ui/animated';
+import { motion } from 'framer-motion';
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -75,103 +77,131 @@ export function DashboardPage() {
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       {/* Hero: Continue Learning */}
       {hasCourses && !isInstructor && (
-        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-xl p-8 mb-6">
-          <p className="text-sm font-medium text-primary mb-3">Continue Learning</p>
-          {continueLearning ? (
-            <>
-              <h2 className="text-2xl font-semibold mb-2">{continueLearning.course_title}</h2>
-              <p className="text-muted-foreground mb-5">
-                {continueLearning.current_lesson
-                  ? `${continueLearning.current_lesson.unit_title} · ${continueLearning.current_lesson.title}`
-                  : 'Start your first lesson'}
-              </p>
-              <div className="flex items-center gap-4">
-                <Link to={`/courses/${continueLearning.course_code}/learn`}>
-                  <Button size="lg">
-                    <Play className="h-4 w-4 mr-2" />
-                    Continue
-                  </Button>
-                </Link>
-                <span className="text-muted-foreground">
-                  {continueLearning.progress_percentage}% complete
-                </span>
-              </div>
-            </>
-          ) : (
-            <>
-              <h2 className="text-2xl font-semibold mb-2">Pick up where you left off</h2>
-              <p className="text-muted-foreground mb-5">
-                Select a course below to start learning
-              </p>
-            </>
-          )}
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative bg-gradient-to-r from-purple-500/10 via-pink-500/5 to-transparent rounded-xl p-8 mb-6 border border-purple-500/20 overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-transparent" />
+          <div className="relative z-10">
+            <p className="text-sm font-medium text-purple-400 mb-3">Continue Learning</p>
+            {continueLearning ? (
+              <>
+                <h2 className="text-2xl font-semibold mb-2">
+                  <GradientText gradient="gaming" animate={false}>{continueLearning.course_title}</GradientText>
+                </h2>
+                <p className="text-muted-foreground mb-5">
+                  {continueLearning.current_lesson
+                    ? `${continueLearning.current_lesson.unit_title} · ${continueLearning.current_lesson.title}`
+                    : 'Start your first lesson'}
+                </p>
+                <div className="flex items-center gap-4">
+                  <Link to={`/courses/${continueLearning.course_code}/learn`}>
+                    <Button size="lg" variant="gradient">
+                      <Play className="h-4 w-4 mr-2" />
+                      Continue
+                    </Button>
+                  </Link>
+                  <span className="text-muted-foreground">
+                    {continueLearning.progress_percentage}% complete
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-semibold mb-2">
+                  <GradientText gradient="gaming" animate={false}>Pick up where you left off</GradientText>
+                </h2>
+                <p className="text-muted-foreground mb-5">
+                  Select a course below to start learning
+                </p>
+              </>
+            )}
+          </div>
+        </motion.div>
       )}
 
       {/* Instructor Hero */}
       {hasCourses && isInstructor && (
-        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-xl p-8 mb-6">
-          <p className="text-sm font-medium text-primary mb-3">Welcome back</p>
-          <h2 className="text-2xl font-semibold mb-2">Manage your courses</h2>
-          <p className="text-muted-foreground mb-5">
-            {instructorCourses.length} active course{instructorCourses.length !== 1 ? 's' : ''}
-          </p>
-          <Link to="/instructor/courses/new">
-            <Button size="lg">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Course
-            </Button>
-          </Link>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative bg-gradient-to-r from-purple-500/10 via-pink-500/5 to-transparent rounded-xl p-8 mb-6 border border-purple-500/20 overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-transparent" />
+          <div className="relative z-10">
+            <p className="text-sm font-medium text-purple-400 mb-3">Welcome back</p>
+            <h2 className="text-2xl font-semibold mb-2">
+              <GradientText gradient="gaming" animate={false}>Manage your courses</GradientText>
+            </h2>
+            <p className="text-muted-foreground mb-5">
+              {instructorCourses.length} active course{instructorCourses.length !== 1 ? 's' : ''}
+            </p>
+            <Link to="/instructor/courses/new">
+              <Button size="lg" variant="gradient">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Course
+              </Button>
+            </Link>
+          </div>
+        </motion.div>
       )}
 
       {/* Quick Stats */}
       {hasCourses && (
         <div className="grid grid-cols-3 gap-5 mb-8">
-          <div className="bg-card border rounded-xl p-5">
+          <SpotlightCard className="p-5" spotlightColor="rgba(168, 85, 247, 0.15)">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <BookOpen className="h-5 w-5" />
+              <BookOpen className="h-5 w-5 text-purple-400" />
               <span className="text-sm font-medium">Courses</span>
             </div>
-            <p className="text-3xl font-semibold">{courses.length}</p>
-          </div>
+            <p className="text-3xl font-semibold">
+              <AnimatedCounter value={courses.length} />
+            </p>
+          </SpotlightCard>
           {isInstructor ? (
             <>
-              <div className="bg-card border rounded-xl p-5">
+              <SpotlightCard className="p-5" spotlightColor="rgba(236, 72, 153, 0.15)">
                 <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                  <Users className="h-5 w-5" />
+                  <Users className="h-5 w-5 text-pink-400" />
                   <span className="text-sm font-medium">Students</span>
                 </div>
                 <p className="text-3xl font-semibold">
-                  {instructorCourses.reduce((sum, c) => sum + c.student_count, 0)}
+                  <AnimatedCounter value={instructorCourses.reduce((sum, c) => sum + c.student_count, 0)} />
                 </p>
-              </div>
-              <div className="bg-card border rounded-xl p-5">
+              </SpotlightCard>
+              <SpotlightCard className="p-5" spotlightColor="rgba(34, 211, 238, 0.15)">
                 <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                  <CheckCircle2 className="h-5 w-5" />
+                  <CheckCircle2 className="h-5 w-5 text-cyan-400" />
                   <span className="text-sm font-medium">Active</span>
                 </div>
                 <p className="text-3xl font-semibold">
-                  {instructorCourses.filter((c) => c.student_count > 0).length}
+                  <AnimatedCounter value={instructorCourses.filter((c) => c.student_count > 0).length} />
                 </p>
-              </div>
+              </SpotlightCard>
             </>
           ) : (
             <>
-              <div className="bg-card border rounded-xl p-5">
+              <SpotlightCard className="p-5" spotlightColor="rgba(34, 197, 94, 0.15)">
                 <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                  <CheckCircle2 className="h-5 w-5" />
+                  <CheckCircle2 className="h-5 w-5 text-green-400" />
                   <span className="text-sm font-medium">Completed</span>
                 </div>
-                <p className="text-3xl font-semibold">{completedLessons}</p>
-              </div>
-              <div className="bg-card border rounded-xl p-5">
+                <p className="text-3xl font-semibold">
+                  <AnimatedCounter value={completedLessons} />
+                </p>
+              </SpotlightCard>
+              <SpotlightCard className="p-5" spotlightColor="rgba(34, 211, 238, 0.15)">
                 <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                  <BookOpen className="h-5 w-5" />
+                  <BookOpen className="h-5 w-5 text-cyan-400" />
                   <span className="text-sm font-medium">Lessons</span>
                 </div>
-                <p className="text-3xl font-semibold">{totalLessons}</p>
-              </div>
+                <p className="text-3xl font-semibold">
+                  <AnimatedCounter value={totalLessons} />
+                </p>
+              </SpotlightCard>
             </>
           )}
         </div>
@@ -180,7 +210,9 @@ export function DashboardPage() {
       {/* Course List Header */}
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-xl font-semibold">
-          {isInstructor ? 'Your Courses' : 'Enrolled Courses'}
+          <GradientText gradient="ocean" animate={false}>
+            {isInstructor ? 'Your Courses' : 'Enrolled Courses'}
+          </GradientText>
         </h2>
         {hasCourses && (
           isInstructor ? (

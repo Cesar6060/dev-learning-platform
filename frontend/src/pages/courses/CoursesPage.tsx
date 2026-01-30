@@ -8,6 +8,8 @@ import { courseService, type CourseListItem } from '@/services/courses';
 import { Search, BookOpen, Users, Layers, Plus } from 'lucide-react';
 import { EnrollmentModal } from '@/components/course/EnrollmentModal';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
+import { GradientText, SpotlightCard } from '@/components/ui/animated';
+import { motion } from 'framer-motion';
 
 export function CoursesPage() {
   const { user } = useAuth();
@@ -65,10 +67,17 @@ export function CoursesPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8"
+      >
         <div>
           <h1 className="text-3xl font-bold">
-            {user?.is_instructor ? 'All Courses' : 'My Courses'}
+            <GradientText gradient="gaming" animate={false}>
+              {user?.is_instructor ? 'All Courses' : 'My Courses'}
+            </GradientText>
           </h1>
           <p className="text-muted-foreground mt-1">
             {user?.is_instructor
@@ -78,21 +87,21 @@ export function CoursesPage() {
         </div>
         <div className="flex gap-2">
           {!user?.is_instructor && (
-            <Button onClick={() => setShowEnrollModal(true)}>
+            <Button variant="gradient" onClick={() => setShowEnrollModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Enroll with Code
             </Button>
           )}
           {user?.is_instructor && (
             <Link to="/instructor/courses/new">
-              <Button>
+              <Button variant="gradient">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Course
               </Button>
             </Link>
           )}
         </div>
-      </div>
+      </motion.div>
 
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -133,37 +142,44 @@ export function CoursesPage() {
         </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredCourses.map((course) => (
-            <Link key={course.id} to={`/courses/${course.code}`}>
-              <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-mono text-muted-foreground">
-                      {course.code}
-                    </span>
-                  </div>
-                  <CardTitle className="line-clamp-2">{course.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {course.description || 'No description'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Instructor: {course.instructor_name}
-                  </p>
-                </CardContent>
-                <CardFooter className="flex gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Layers className="h-4 w-4" />
-                    {course.unit_count} units
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    {course.student_count} students
-                  </div>
-                </CardFooter>
-              </Card>
-            </Link>
+          {filteredCourses.map((course, index) => (
+            <motion.div
+              key={course.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: index * 0.1 }}
+            >
+              <Link to={`/courses/${course.code}`}>
+                <SpotlightCard className="h-full cursor-pointer" spotlightColor="rgba(168, 85, 247, 0.1)">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-mono text-purple-400">
+                        {course.code}
+                      </span>
+                    </div>
+                    <CardTitle className="line-clamp-2">{course.title}</CardTitle>
+                    <CardDescription className="line-clamp-2">
+                      {course.description || 'No description'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Instructor: {course.instructor_name}
+                    </p>
+                  </CardContent>
+                  <CardFooter className="flex gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Layers className="h-4 w-4 text-pink-400" />
+                      {course.unit_count} units
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Users className="h-4 w-4 text-cyan-400" />
+                      {course.student_count} students
+                    </div>
+                  </CardFooter>
+                </SpotlightCard>
+              </Link>
+            </motion.div>
           ))}
         </div>
       )}
