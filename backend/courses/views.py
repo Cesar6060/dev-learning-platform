@@ -878,7 +878,7 @@ class CourseAnnouncementsView(generics.ListCreateAPIView):
         # Prefetch user preferences to avoid N+1 queries
         enrollments = Enrollment.objects.filter(
             course=announcement.course, is_active=True
-        ).select_related('user').prefetch_related('user__userpreferences')
+        ).select_related('user').prefetch_related('user__preferences')
         notifications = []
         email_tasks = []
 
@@ -897,7 +897,7 @@ class CourseAnnouncementsView(generics.ListCreateAPIView):
                 # Check preferences (already prefetched)
                 should_send = True
                 try:
-                    prefs = enrollment.user.userpreferences
+                    prefs = enrollment.user.preferences
                     should_send = prefs.email_announcements
                 except UserPreferences.DoesNotExist:
                     pass
