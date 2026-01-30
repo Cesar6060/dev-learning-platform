@@ -157,7 +157,7 @@ export function LessonQuestions({ lessonId, onStatusChange }: LessonQuestionsPro
 
             {/* Previous attempt info */}
             {status.attempt_count > 0 && !status.has_passed && (
-              <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-800 dark:text-amber-400">
+              <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-800 dark:text-blue-400">
                 <AlertCircle className="h-4 w-4" />
                 <span className="text-sm">
                   Best score: {status.correct_answers}/{status.total_questions} correct.

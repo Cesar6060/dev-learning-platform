@@ -79,7 +79,7 @@ export function CourseSidebar({
 
   if (isCollapsed) {
     return (
-      <div className="w-12 bg-card border-r flex flex-col items-center py-4">
+      <div className="w-12 bg-slate-900/90 backdrop-blur-xl border-r border-white/10 flex flex-col items-center py-4">
         <button
           onClick={onToggleCollapse}
           className="p-2 hover:bg-accent rounded-md mb-4"
@@ -103,9 +103,9 @@ export function CourseSidebar({
   }
 
   return (
-    <div className="w-[380px] bg-card border-r flex flex-col h-full">
+    <div className="w-[380px] bg-slate-900/90 backdrop-blur-xl border-r border-white/10 flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b">
+      <div className="p-4 border-b border-white/10">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold text-sm">Course Content</h2>
           <button
@@ -138,7 +138,7 @@ export function CourseSidebar({
           const { completed, total } = getUnitProgress(unit);
 
           return (
-            <div key={unit.id} className="border-b">
+            <div key={unit.id} className="border-b border-white/5">
               {/* Unit header */}
               <button
                 onClick={() => toggleUnit(unit.id)}
@@ -164,7 +164,7 @@ export function CourseSidebar({
 
               {/* Lessons list */}
               {isExpanded && (
-                <div className="bg-muted/30">
+                <div className="bg-white/5">
                   {unit.lessons.map((lesson) => {
                     const isActive = lesson.id === currentLessonId;
                     const hasVideo = lesson.video_type !== 'none' && lesson.video_id;
@@ -212,7 +212,7 @@ export function CourseSidebar({
                         {/* Quiz requirement indicator */}
                         {lesson.required_quiz_info && !lesson.is_completed && (
                           <span title={`Quiz required: ${lesson.required_quiz_info.title}`}>
-                            <FileQuestion className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                            <FileQuestion className="h-4 w-4 text-blue-400 flex-shrink-0" />
                           </span>
                         )}
                       </button>

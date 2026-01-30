@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { courseService } from '@/services/courses';
+import { motion } from 'framer-motion';
 import type { Enrollment } from '@/types';
 
 export function Header() {
@@ -85,12 +86,18 @@ export function Header() {
   const breadcrumbs = getBreadcrumbInfo();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-200/50 dark:border-zinc-700/50 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl">
       <div className="container mx-auto flex h-14 items-center px-4">
         {/* Logo */}
-        <Link to="/" className="flex items-center space-x-2">
-          <Gamepad2 className="h-6 w-6" />
-          <span className="font-bold hidden sm:inline">GameDev</span>
+        <Link to="/" className="flex items-center space-x-2.5 group">
+          <motion.div
+            whileHover={{ rotate: [0, -10, 10, 0] }}
+            transition={{ duration: 0.5 }}
+            className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25"
+          >
+            <Gamepad2 className="h-5 w-5 text-white" />
+          </motion.div>
+          <span className="font-bold text-slate-800 dark:text-white hidden sm:inline">GameDev</span>
         </Link>
 
         {/* Main Navigation */}
@@ -98,39 +105,39 @@ export function Header() {
           <nav className="flex items-center ml-8 space-x-1">
             <Link
               to="/dashboard"
-              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                 location.pathname === '/dashboard'
-                  ? 'bg-muted text-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               Dashboard
             </Link>
             <Link
               to="/courses"
-              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                 location.pathname === '/courses' || location.pathname.startsWith('/courses/')
-                  ? 'bg-muted text-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               Courses
             </Link>
             {/* Contextual breadcrumbs */}
             {breadcrumbs && breadcrumbs.length > 0 && (
-              <nav className="hidden md:flex items-center text-sm text-muted-foreground">
+              <nav className="hidden md:flex items-center text-sm text-slate-500 dark:text-slate-400">
                 {breadcrumbs.map((crumb, index) => (
                   <span key={index} className="flex items-center">
-                    <ChevronRight className="h-4 w-4 mx-1" />
+                    <ChevronRight className="h-4 w-4 mx-1 text-slate-400 dark:text-slate-500" />
                     {crumb.href ? (
                       <Link
                         to={crumb.href}
-                        className="hover:text-foreground transition-colors"
+                        className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                       >
                         {crumb.label}
                       </Link>
                     ) : (
-                      <span className="text-foreground">{crumb.label}</span>
+                      <span className="text-slate-800 dark:text-white">{crumb.label}</span>
                     )}
                   </span>
                 ))}
@@ -147,35 +154,41 @@ export function Header() {
 
               {/* User Menu Dropdown */}
               <div className="relative" ref={userMenuRef}>
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center space-x-2 px-2 py-1.5 rounded-md hover:bg-muted transition-colors"
+                  className="flex items-center space-x-2 px-2 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
                 >
                   {user?.preferences?.avatar_url ? (
                     <img
                       src={user.preferences.avatar_url}
                       alt="Avatar"
-                      className="h-7 w-7 rounded-full object-cover"
+                      className="h-8 w-8 rounded-full object-cover ring-2 ring-white dark:ring-zinc-800 shadow-sm"
                     />
                   ) : (
-                    <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
-                      <User className="h-4 w-4 text-muted-foreground" />
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center shadow-sm">
+                      <User className="h-4 w-4 text-white" />
                     </div>
                   )}
-                  <span className="hidden sm:inline text-sm font-medium">
+                  <span className="hidden sm:inline text-sm font-medium text-slate-700 dark:text-slate-300">
                     {user?.first_name || 'Account'}
                   </span>
-                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
-                </button>
+                  <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+                </motion.button>
 
                 {userMenuOpen && (
-                  <div className="absolute top-full right-0 mt-1 w-56 bg-background border rounded-lg shadow-lg py-1 z-50">
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute top-full right-0 mt-2 w-56 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-slate-200/50 dark:border-zinc-700/50 rounded-xl shadow-xl py-1 z-50"
+                  >
                     {/* User Info */}
-                    <div className="px-3 py-2 border-b">
-                      <div className="font-medium">{user?.first_name} {user?.last_name}</div>
-                      <div className="text-xs text-muted-foreground">{user?.email}</div>
+                    <div className="px-4 py-3 border-b border-slate-200/50 dark:border-zinc-700/50">
+                      <div className="font-medium text-slate-800 dark:text-white">{user?.first_name} {user?.last_name}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{user?.email}</div>
                       {user?.is_instructor && (
-                        <span className="inline-block mt-1 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                        <span className="inline-block mt-2 rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400">
                           Instructor
                         </span>
                       )}
@@ -184,7 +197,7 @@ export function Header() {
                     {/* Grades Section (Students only) */}
                     {!user?.is_instructor && enrolledCourses.length > 0 && (
                       <>
-                        <div className="px-3 py-2 text-xs font-medium text-muted-foreground">
+                        <div className="px-4 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">
                           My Grades
                         </div>
                         {enrolledCourses.slice(0, 3).map((enrollment) => (
@@ -192,18 +205,18 @@ export function Header() {
                             key={enrollment.id}
                             to={`/courses/${enrollment.course.code}/grades`}
                             onClick={() => setUserMenuOpen(false)}
-                            className="flex items-center justify-between px-3 py-2 text-sm hover:bg-muted transition-colors"
+                            className="flex items-center justify-between px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
                           >
                             <span className="truncate">{enrollment.course.code}</span>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            <ChevronRight className="h-4 w-4 text-slate-400" />
                           </Link>
                         ))}
                         {enrolledCourses.length > 3 && (
-                          <div className="px-3 py-1 text-xs text-muted-foreground">
+                          <div className="px-4 py-1 text-xs text-slate-400">
                             +{enrolledCourses.length - 3} more courses
                           </div>
                         )}
-                        <div className="border-t my-1" />
+                        <div className="border-t border-slate-200/50 dark:border-zinc-700/50 my-1" />
                       </>
                     )}
 
@@ -211,31 +224,31 @@ export function Header() {
                     <Link
                       to="/settings"
                       onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
                     >
                       <Settings className="h-4 w-4" />
                       Settings
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors w-full text-left text-red-600 dark:text-red-400"
+                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors w-full text-left text-red-600 dark:text-red-400"
                     >
                       <LogOut className="h-4 w-4" />
                       Logout
                     </button>
-                  </div>
+                  </motion.div>
                 )}
               </div>
             </>
           ) : (
             <>
               <Link to="/login">
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
                   Login
                 </Button>
               </Link>
               <Link to="/register">
-                <Button size="sm">Register</Button>
+                <Button variant="glassPrimary" size="sm" className="rounded-lg">Register</Button>
               </Link>
             </>
           )}

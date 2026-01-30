@@ -179,7 +179,7 @@ export function StudentGradeCard({ courseCode }: StudentGradeCardProps) {
           {grades.quizzes.possible > 0 && (
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2 text-muted-foreground">
-                <FileQuestion className="h-4 w-4 text-purple-500" />
+                <FileQuestion className="h-4 w-4 text-blue-500" />
                 <span>Quizzes</span>
                 {grades.quizzes.weight && (
                   <span className="text-xs">({grades.quizzes.weight}%)</span>

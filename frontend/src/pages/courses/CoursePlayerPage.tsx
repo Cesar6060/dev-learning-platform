@@ -545,7 +545,7 @@ export function CoursePlayerPage() {
   return (
     <div className="h-screen flex flex-col bg-background animate-in fade-in duration-300">
       {/* Learning Mode Header */}
-      <div className="h-14 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 flex items-center px-4 gap-4">
+      <div className="h-14 border-b border-white/10 bg-white/5 backdrop-blur-xl flex items-center px-4 gap-4">
         {/* Exit Learning Mode */}
         <Link to={`/courses/${code}`}>
           <Button
@@ -621,7 +621,7 @@ export function CoursePlayerPage() {
                       <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg mb-3 ${
                         progress?.required_quiz_passed
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
                       }`}>
                         {progress?.required_quiz_passed ? (
                           <>
@@ -650,7 +650,7 @@ export function CoursePlayerPage() {
                       <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg mb-3 ${
                         questionsStatus.can_complete_lesson
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
                       }`}>
                         {questionsStatus.can_complete_lesson ? (
                           <>
@@ -715,7 +715,7 @@ export function CoursePlayerPage() {
               </div>
 
               {/* Navigation footer */}
-              <div className="h-14 border-t bg-card flex items-center justify-between px-4 sm:px-6">
+              <div className="h-14 border-t border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-between px-4 sm:px-6">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -759,10 +759,10 @@ export function CoursePlayerPage() {
                             onClick={() => handleSectionChange(totalSections - 1)}
                             className={`w-2 h-2 rounded-sm transition-all ${
                               isOnQuizSection
-                                ? 'bg-amber-500 w-3'
+                                ? 'bg-blue-500 w-3'
                                 : currentSectionIndex < totalSections - 1
-                                  ? 'bg-amber-500/30 hover:bg-amber-500/50'
-                                  : 'bg-amber-500/50'
+                                  ? 'bg-blue-500/30 hover:bg-blue-500/50'
+                                  : 'bg-blue-500/50'
                             }`}
                             title="Comprehension Check"
                           />

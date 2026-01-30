@@ -210,7 +210,7 @@ export function GradebookPage() {
             <Card>
               <CardContent className="py-4">
                 <div className="text-2xl font-bold flex items-center gap-2">
-                  <FileQuestion className="h-5 w-5 text-purple-500" />
+                  <FileQuestion className="h-5 w-5 text-blue-500" />
                   {quizCount}
                 </div>
                 <p className="text-sm text-muted-foreground">Quizzes</p>
@@ -233,7 +233,7 @@ export function GradebookPage() {
           <span>Assignment</span>
         </div>
         <div className="flex items-center gap-2">
-          <FileQuestion className="h-4 w-4 text-purple-500" />
+          <FileQuestion className="h-4 w-4 text-blue-500" />
           <span>Quiz</span>
         </div>
         <div className="w-px h-4 bg-border" />
@@ -290,7 +290,7 @@ export function GradebookPage() {
                       >
                         <div className="flex items-center justify-center gap-1">
                           {item.type === 'quiz' ? (
-                            <FileQuestion className="h-3 w-3 text-purple-500" />
+                            <FileQuestion className="h-3 w-3 text-blue-500" />
                           ) : (
                             <ClipboardList className="h-3 w-3 text-blue-500" />
                           )}

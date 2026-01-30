@@ -180,7 +180,7 @@ export function MyGradesPage() {
         <Card>
           <CardContent className="py-4">
             <div className="text-2xl font-bold flex items-center gap-2">
-              <FileQuestion className="h-5 w-5 text-purple-500" />
+              <FileQuestion className="h-5 w-5 text-blue-500" />
               {quizCount}
             </div>
             <p className="text-sm text-muted-foreground">
@@ -230,7 +230,7 @@ export function MyGradesPage() {
           <span>Assignment</span>
         </div>
         <div className="flex items-center gap-2">
-          <FileQuestion className="h-4 w-4 text-purple-500" />
+          <FileQuestion className="h-4 w-4 text-blue-500" />
           <span>Quiz</span>
         </div>
         <div className="w-px h-4 bg-border" />
@@ -289,7 +289,7 @@ export function MyGradesPage() {
                       <tr key={`${item.type}-${item.id}`} className="border-b hover:bg-muted/30">
                         <td className="p-3">
                           {item.type === 'quiz' ? (
-                            <FileQuestion className="h-4 w-4 text-purple-500" />
+                            <FileQuestion className="h-4 w-4 text-blue-500" />
                           ) : (
                             <ClipboardList className="h-4 w-4 text-blue-500" />
                           )}

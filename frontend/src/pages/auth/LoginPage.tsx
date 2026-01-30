@@ -4,8 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/Card';
 import { Gamepad2, Loader2, Sun, Moon, Monitor } from 'lucide-react';
+import { SoftBackground, GlassCard } from '@/components/ui/glass';
+import { motion } from 'framer-motion';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -49,84 +50,107 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/50 px-4 relative">
+    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
+      {/* Soft gradient background */}
+      <SoftBackground variant="default" />
+
       {/* Theme toggle in top-right corner */}
-      <button
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
         onClick={cycleTheme}
-        className="absolute top-4 right-4 p-2 rounded-lg border bg-background hover:bg-muted transition-colors"
+        className="absolute top-4 right-4 p-2.5 rounded-xl bg-white/70 dark:bg-zinc-800/70 backdrop-blur-md border border-white/20 dark:border-zinc-700/50 shadow-lg hover:shadow-xl transition-all z-20"
         title={`Theme: ${theme}`}
       >
-        <ThemeIcon className="h-5 w-5" />
-      </button>
+        <ThemeIcon className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+      </motion.button>
 
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <Gamepad2 className="h-12 w-12 text-primary" />
-          </div>
-          <CardTitle className="text-2xl">Welcome back</CardTitle>
-          <CardDescription>
-            Enter your credentials to access your account
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            {error && (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                {error}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10 w-full max-w-md"
+      >
+        <GlassCard hover={false} className="p-0 overflow-hidden">
+          <div className="p-8 pb-6 text-center border-b border-slate-200/50 dark:border-zinc-700/50">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', delay: 0.2 }}
+              className="flex justify-center mb-5"
+            >
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30">
+                <Gamepad2 className="h-8 w-8 text-white" />
               </div>
-            )}
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
-                Email
-              </label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
-                Password
-              </label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-            </div>
-            <div className="text-right">
-              <Link
-                to="/forgot-password"
-                className="text-sm text-muted-foreground hover:text-primary"
-              >
-                Forgot password?
-              </Link>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sign in
-            </Button>
-            <p className="text-sm text-muted-foreground text-center">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-primary hover:underline">
-                Sign up
-              </Link>
+            </motion.div>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
+              Welcome back
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400">
+              Enter your credentials to continue
             </p>
-          </CardFooter>
-        </form>
-      </Card>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <div className="p-8 space-y-5">
+              {error && (
+                <div className="rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 p-4 text-sm text-red-600 dark:text-red-400">
+                  {error}
+                </div>
+              )}
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl"
+                />
+              </div>
+              <div className="text-right">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
+            <div className="p-8 pt-0 space-y-5">
+              <Button type="submit" variant="glassPrimary" className="w-full rounded-xl h-11" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Sign in
+              </Button>
+              <p className="text-sm text-slate-500 dark:text-slate-400 text-center">
+                Don't have an account?{' '}
+                <Link to="/register" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors">
+                  Sign up
+                </Link>
+              </p>
+            </div>
+          </form>
+        </GlassCard>
+      </motion.div>
     </div>
   );
 }

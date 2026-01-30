@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Header } from '@/components/layout/Header';
+import { SoftBackground } from '@/components/ui/glass';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
@@ -89,14 +90,26 @@ function InstructorRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
 
   // Hide header in learning mode (CoursePlayerPage has its own header)
   const isLearningMode = location.pathname.match(/\/courses\/[^/]+\/learn/);
+  // Hide background for auth pages (they have their own) and learning mode
+  const isAuthPage = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email'].some(
+    path => location.pathname.startsWith(path)
+  );
+  const showSoftBg = isAuthenticated && !isAuthPage && !isLearningMode;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 relative">
+      {/* Soft gradient background for logged-in pages */}
+      {showSoftBg && (
+        <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
+          <SoftBackground variant="default" />
+        </div>
+      )}
       {!isLearningMode && <Header />}
-      <main>
+      <main className="relative z-10">
         <Routes>
           {/* Public routes */}
           <Route
