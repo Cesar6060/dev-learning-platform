@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, FileText, Bell, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, FileText, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { courseService } from '@/services/courses';
-import type { CalendarEvent } from '@/types';
+import type { CalendarEvent, InstructorReminder } from '@/types';
 
 interface WeekCalendarProps {
   onAddReminder: (date: string) => void;
+  onEditReminder: (reminder: InstructorReminder) => void;
 }
 
-export function WeekCalendar({ onAddReminder }: WeekCalendarProps) {
+export function WeekCalendar({ onAddReminder, onEditReminder }: WeekCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,14 +76,12 @@ export function WeekCalendar({ onAddReminder }: WeekCalendarProps) {
     return date.toDateString() === today.toDateString();
   };
 
-  const handleDeleteReminder = async (reminderId: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm('Delete this reminder?')) return;
+  const handleReminderClick = async (reminderId: number) => {
     try {
-      await courseService.deleteReminder(reminderId);
-      loadEvents();
+      const reminder = await courseService.getReminder(reminderId);
+      onEditReminder(reminder);
     } catch (err) {
-      console.error('Failed to delete reminder:', err);
+      console.error('Failed to load reminder:', err);
     }
   };
 
@@ -181,22 +180,15 @@ export function WeekCalendar({ onAddReminder }: WeekCalendarProps) {
                 {dayEvents.slice(0, 5).map((event) => (
                   <div
                     key={event.id}
-                    className={`group/event relative text-[11px] px-1.5 py-0.5 rounded border cursor-pointer ${getEventColorClass(
-                      event.color
-                    )}`}
-                    title={`${event.title}${event.time ? ` at ${event.time}` : ''}`}
+                    onClick={() => event.reminder_id && handleReminderClick(event.reminder_id)}
+                    className={`text-[11px] px-1.5 py-0.5 rounded border ${
+                      event.reminder_id ? 'cursor-pointer hover:opacity-80' : ''
+                    } ${getEventColorClass(event.color)}`}
+                    title={`${event.title}${event.time ? ` at ${event.time}` : ''}${event.reminder_id ? ' (click to edit)' : ''}`}
                   >
                     <div className="flex items-center gap-1">
                       {getEventIcon(event.type)}
                       <span className="truncate flex-1">{event.title}</span>
-                      {event.reminder_id && (
-                        <button
-                          onClick={(e) => handleDeleteReminder(event.reminder_id!, e)}
-                          className="opacity-0 group-hover/event:opacity-100 p-0.5 rounded hover:bg-red-500/20"
-                        >
-                          <Trash2 className="h-2.5 w-2.5 text-red-400" />
-                        </button>
-                      )}
                     </div>
                   </div>
                 ))}

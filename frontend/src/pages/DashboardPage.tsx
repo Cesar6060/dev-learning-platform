@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { courseService, type InstructorCourse } from '@/services/courses';
-import type { Enrollment, EnhancedDashboard } from '@/types';
+import type { Enrollment, EnhancedDashboard, InstructorReminder } from '@/types';
 import { Plus, Play, BookOpen, Users, CheckCircle2, Clock, AlertCircle, ChevronRight, Megaphone } from 'lucide-react';
 import { EnrollmentModal } from '@/components/course/EnrollmentModal';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -20,6 +20,7 @@ export function DashboardPage() {
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [reminderDate, setReminderDate] = useState<string>('');
+  const [editingReminder, setEditingReminder] = useState<InstructorReminder | null>(null);
   const [calendarKey, setCalendarKey] = useState(0);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
 
@@ -60,7 +61,14 @@ export function DashboardPage() {
   const continueLearning = enhancedData && !enhancedData.is_instructor ? enhancedData.continue_learning : null;
 
   const handleAddReminder = (date: string) => {
+    setEditingReminder(null);
     setReminderDate(date);
+    setShowReminderModal(true);
+  };
+
+  const handleEditReminder = (reminder: InstructorReminder) => {
+    setEditingReminder(reminder);
+    setReminderDate('');
     setShowReminderModal(true);
   };
 
@@ -189,7 +197,7 @@ export function DashboardPage() {
               Add Reminder
             </Button>
           </div>
-          <WeekCalendar key={calendarKey} onAddReminder={handleAddReminder} />
+          <WeekCalendar key={calendarKey} onAddReminder={handleAddReminder} onEditReminder={handleEditReminder} />
         </div>
       )}
 
@@ -350,9 +358,13 @@ export function DashboardPage() {
       {isInstructor && (
         <AddReminderModal
           open={showReminderModal}
-          onOpenChange={setShowReminderModal}
+          onOpenChange={(open) => {
+            setShowReminderModal(open);
+            if (!open) setEditingReminder(null);
+          }}
           defaultDate={reminderDate}
           courses={instructorCourses}
+          editingReminder={editingReminder}
           onSuccess={() => {
             setCalendarKey(k => k + 1); // Trigger calendar reload
           }}

@@ -574,6 +574,11 @@ export const courseService = {
     return response.data;
   },
 
+  async getReminder(id: number): Promise<InstructorReminder> {
+    const response = await api.get<InstructorReminder>(`/courses/instructor/reminders/${id}/`);
+    return response.data;
+  },
+
   async createReminder(data: {
     title: string;
     description?: string;

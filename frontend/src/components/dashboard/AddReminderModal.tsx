@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, Calendar, ChevronDown } from 'lucide-react';
+import { X, Calendar, ChevronDown, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { courseService, type InstructorCourse } from '@/services/courses';
+import type { InstructorReminder } from '@/types';
 
 interface AddReminderModalProps {
   open: boolean;
@@ -9,6 +10,7 @@ interface AddReminderModalProps {
   defaultDate?: string;
   courses: InstructorCourse[];
   onSuccess: () => void;
+  editingReminder?: InstructorReminder | null;
 }
 
 const COLORS = [
@@ -33,6 +35,7 @@ export function AddReminderModal({
   defaultDate,
   courses,
   onSuccess,
+  editingReminder,
 }: AddReminderModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -45,7 +48,10 @@ export function AddReminderModal({
   const [color, setColor] = useState('blue');
   const [courseId, setCourseId] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
+
+  const isEditing = !!editingReminder;
 
   // Get days in the selected month
   const getDaysInMonth = (m: number, y: number) => {
@@ -59,25 +65,55 @@ export function AddReminderModal({
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 3 }, (_, i) => currentYear + i);
 
-  // Reset form when modal opens
+  // Reset form when modal opens or populate from editing reminder
   useEffect(() => {
     if (open) {
-      setTitle('');
-      setDescription('');
-      setHour(null);
-      setMinute('00');
-      setAmpm('AM');
-      setColor('blue');
-      setCourseId('');
       setError('');
 
-      // Set date from defaultDate or today
-      const dateToUse = defaultDate ? new Date(defaultDate + 'T00:00:00') : new Date();
-      setMonth(dateToUse.getMonth());
-      setDay(dateToUse.getDate());
-      setYear(dateToUse.getFullYear());
+      if (editingReminder) {
+        // Populate from existing reminder
+        setTitle(editingReminder.title);
+        setDescription(editingReminder.description || '');
+        setColor(editingReminder.color);
+        setCourseId(editingReminder.course ? String(editingReminder.course) : '');
+
+        // Parse date
+        const [y, m, d] = editingReminder.date.split('-').map(Number);
+        setYear(y);
+        setMonth(m - 1);
+        setDay(d);
+
+        // Parse time if present
+        if (editingReminder.time) {
+          const [h24, min] = editingReminder.time.split(':').map(Number);
+          let h12 = h24 % 12;
+          if (h12 === 0) h12 = 12;
+          setHour(h12);
+          setMinute(String(min).padStart(2, '0'));
+          setAmpm(h24 >= 12 ? 'PM' : 'AM');
+        } else {
+          setHour(null);
+          setMinute('00');
+          setAmpm('AM');
+        }
+      } else {
+        // Reset for new reminder
+        setTitle('');
+        setDescription('');
+        setHour(null);
+        setMinute('00');
+        setAmpm('AM');
+        setColor('blue');
+        setCourseId('');
+
+        // Set date from defaultDate or today
+        const dateToUse = defaultDate ? new Date(defaultDate + 'T00:00:00') : new Date();
+        setMonth(dateToUse.getMonth());
+        setDay(dateToUse.getDate());
+        setYear(dateToUse.getFullYear());
+      }
     }
-  }, [open, defaultDate]);
+  }, [open, defaultDate, editingReminder]);
 
   // Adjust day if it exceeds days in month
   useEffect(() => {
@@ -111,21 +147,45 @@ export function AddReminderModal({
     }
 
     try {
-      await courseService.createReminder({
+      const reminderData = {
         title: trimmedTitle,
         description: description.trim(),
         date: dateStr,
         time: timeStr,
         color,
         course: courseId ? parseInt(courseId) : undefined,
-      });
+      };
+
+      if (isEditing && editingReminder) {
+        await courseService.updateReminder(editingReminder.id, reminderData);
+      } else {
+        await courseService.createReminder(reminderData);
+      }
       onSuccess();
       onOpenChange(false);
     } catch (err: unknown) {
-      console.error('Failed to create reminder:', err);
-      setError('Failed to create reminder. Please try again.');
+      console.error('Failed to save reminder:', err);
+      setError(`Failed to ${isEditing ? 'update' : 'create'} reminder. Please try again.`);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editingReminder || !confirm('Delete this reminder?')) return;
+
+    setIsDeleting(true);
+    setError('');
+
+    try {
+      await courseService.deleteReminder(editingReminder.id);
+      onSuccess();
+      onOpenChange(false);
+    } catch (err: unknown) {
+      console.error('Failed to delete reminder:', err);
+      setError('Failed to delete reminder. Please try again.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -158,12 +218,12 @@ export function AddReminderModal({
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-[#22c55e]" />
-            <h2 className="text-lg font-semibold">Add Reminder</h2>
+            <h2 className="text-lg font-semibold">{isEditing ? 'Edit Reminder' : 'Add Reminder'}</h2>
           </div>
           <button
-            onClick={() => !isSubmitting && onOpenChange(false)}
+            onClick={() => !isSubmitting && !isDeleting && onOpenChange(false)}
             className="p-1 rounded hover:bg-muted transition-colors"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isDeleting}
           >
             <X className="h-5 w-5" />
           </button>
@@ -180,7 +240,7 @@ export function AddReminderModal({
 
           {/* Date Display */}
           <div className="text-sm text-muted-foreground">
-            Adding reminder for: <span className="text-foreground font-medium">{formatDateDisplay()}</span>
+            {isEditing ? 'Editing' : 'Adding'} reminder for: <span className="text-foreground font-medium">{formatDateDisplay()}</span>
           </div>
 
           {/* Title */}
@@ -358,22 +418,38 @@ export function AddReminderModal({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2 border-t border-border mt-4">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="neon"
-              disabled={isSubmitting || !title.trim()}
-            >
-              {isSubmitting ? 'Adding...' : 'Add Reminder'}
-            </Button>
+          <div className="flex justify-between pt-2 border-t border-border mt-4">
+            {isEditing ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleDelete}
+                disabled={isSubmitting || isDeleting}
+                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              >
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </Button>
+            ) : (
+              <div />
+            )}
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting || isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="neon"
+                disabled={isSubmitting || isDeleting || !title.trim()}
+              >
+                {isSubmitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Add Reminder'}
+              </Button>
+            </div>
           </div>
         </form>
       </div>
