@@ -81,7 +81,7 @@ export function CourseSidebar({
 
   if (isCollapsed) {
     return (
-      <div className="w-12 bg-background/80 dark:bg-zinc-900/90 border-r border-purple-500/20 flex flex-col items-center py-4">
+      <div className="w-12 bg-zinc-950 border-r border-zinc-800 flex flex-col items-center py-4">
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
@@ -109,9 +109,9 @@ export function CourseSidebar({
   }
 
   return (
-    <div className="w-[380px] bg-background/80 dark:bg-zinc-900/90 border-r border-purple-500/20 flex flex-col h-full">
+    <div className="w-[380px] bg-zinc-950 border-r border-zinc-800 flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-purple-500/20">
+      <div className="p-4 border-b border-zinc-800">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold text-sm">
             <GradientText gradient="gaming" animate={false}>Course Content</GradientText>
@@ -156,7 +156,7 @@ export function CourseSidebar({
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: unitIndex * 0.05 }}
-              className="border-b border-purple-500/10"
+              className="border-b border-zinc-800"
             >
               {/* Unit header */}
               <button
@@ -189,7 +189,7 @@ export function CourseSidebar({
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="bg-black/20 dark:bg-black/30"
+                  className="bg-zinc-900"
                 >
                   {unit.lessons.map((lesson, lessonIndex) => {
                     const isActive = lesson.id === currentLessonId;
