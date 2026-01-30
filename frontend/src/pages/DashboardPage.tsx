@@ -223,7 +223,10 @@ export function DashboardPage() {
               <CalendarClock className="h-5 w-5" style={{ color: '#f59e0b' }} />
               <span className="text-sm font-medium">Due Soon</span>
             </div>
-            <p className="text-3xl font-semibold text-gradient-gaming">{upcomingDeadlines.length}</p>
+            <p className="text-3xl font-semibold text-gradient-gaming">{upcomingDeadlines.filter(d => {
+              const hours = (new Date(d.due_date).getTime() - Date.now()) / (1000 * 60 * 60);
+              return hours >= 0 && hours < 72;
+            }).length}</p>
           </div>
           <div className="card-gaming rounded-xl p-5">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
